@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Мои документы</h2>
+<a href="{% url 'document_create' %}" class="btn btn-primary mb-3">Создать новый документ</a>
+
+{% if documents %}
+  <div class="list-group">
+    {% for doc in documents %}
+      <a href="{% url 'document_edit' doc.pk %}" class="list-group-item list-group-item-action">
+        {{ doc.title }} — {{ doc.created_at|date:"d.m.Y" }}
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>У вас пока нет документов.</p>
+{% endif %}
+{% endblock %}
