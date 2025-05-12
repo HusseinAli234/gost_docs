@@ -12,7 +12,7 @@
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav ms-auto">
         {% if user.is_authenticated %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'document_list' %}">Мои документы</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'documents:list' %}">Мои документы</a></li>
           {# Перемещаем форму выхода сюда, когда пользователь аутентифицирован #}
           <li class="nav-item">
             <form action="{% url 'logout' %}" method="post" style="display: inline;">

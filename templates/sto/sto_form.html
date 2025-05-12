@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}
+  {% if form.instance.pk %}Редактирование{% else %}Создание{% endif %} документа
+{% endblock %}
+{% block content %}
+  <h1>
+    {% if form.instance.pk %}Редактирование{% else %}Создание{% endif %} документа
+  </h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-4">
+      {{ form.as_p }}
+    </div>
+
+    <hr>
+    <h2>Реферат</h2>
+    <div class="mb-4">
+      {{ abstract_form.as_p }}
+    </div>
+
+    <hr>
+    <h2>Разделы</h2>
+    {{ sections.management_form }}
+    {% for fs in sections.forms %}
+      <div class="card mb-2 p-3">
+        {{ fs.as_p }}
+        {% if fs.instance.pk %}
+          {{ fs.DELETE }} <label>Удалить</label>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <hr>
+    <h2>Список литературы</h2>
+    {{ biblio.management_form }}
+    {% for fs in biblio.forms %}
+      <div class="card mb-2 p-3">
+        {{ fs.as_p }}
+        {% if fs.instance.pk %}
+          {{ fs.DELETE }} <label>Удалить</label>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <hr>
+    <h2>Приложения</h2>
+    {{ appendices.management_form }}
+    {% for fs in appendices.forms %}
+      <div class="card mb-2 p-3">
+        {{ fs.as_p }}
+        {% if fs.instance.pk %}
+          {{ fs.DELETE }} <label>Удалить</label>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <button type="submit" class="btn btn-primary mt-3">Сохранить</button>
+    <a href="{% url 'documents:list' %}" class="btn btn-link mt-3">Отмена</a>
+  </form>
+{% endblock %}

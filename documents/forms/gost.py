@@ -1,10 +1,10 @@
 from django import forms
-from ..models.gost import Document
+from ..models.gost import Documentss
 from ckeditor.widgets import CKEditorWidget
 
 class DocumentForm(forms.ModelForm):
     class Meta:
-        model = Document
+        model = Documentss
         fields = '__all__'
         exclude = ['user', 'created_at']
         widgets = {

@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from ckeditor.fields import RichTextField
 
-class Document(models.Model):
+class Documentss(models.Model):
     TEMPLATE_CHOICES = [
         ('gost', 'ГОСТ 7.32'),
         ('sto', 'СТО СФУ 4.2'),

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Документ: {{ sto.title }} | ГОСТ Документы{% endblock %}
+{% block content %}
+<h1>{{ sto.get_work_type_display }} «{{ sto.title }}»</h1>
+<p><strong>Студент:</strong> {{ sto.student_name }}<br>
+<strong>Руководитель:</strong> {{ sto.supervisor }}<br>
+<strong>Город/Год:</strong> {{ sto.city }}, {{ document.year }}</p>
+{% if sto.abstract %}
+  <h2>Реферат</h2>
+  <p><em>Ключевые слова:</em> {{ sto.abstract.keywords }}</p>
+  <div>{{ sto.abstract.text|linebreaks }}</div>
+{% endif %}
+{% if sto.sections.exists %}
+  <h2>Содержание</h2>
+  {% for sec in sto.sections.all %}
+    <h3>{{ sec.order }}. {{ sec.title }}</h3>
+    <div>{{ sec.content|safe }}</div>
+  {% endfor %}
+{% endif %}
+{% if sto.biblio.exists %}
+  <h2>Список литературы</h2>
+  <ol>
+    {% for item in sto.biblio.all %}
+      <li>{{ item.entry_text }}</li>
+    {% endfor %}
+  </ol>
+{% endif %}
+{% if sto.appendices.exists %}
+  <h2>Приложения</h2>
+  <ul>
+    {% for app in sto.appendices.all %}
+      <li><a href="{{ app.content.url }}">Приложение {{ app.label }}{% if app.title %}: {{ app.title }}{% endif %}</a></li>
+    {% endfor %}
+  </ul>
+{% endif %}
+<div class="mt-4">
+  <a href="{% url 'documents:edit' sto.pk %}" class="btn btn-secondary me-2">Редактировать</a>
+  <a href="{% url 'documents:delete' sto.pk %}" class="btn btn-danger">Удалить</a>
+  <a href="{% url 'documents:list' %}" class="btn btn-link">Назад к списку</a>
+</div>
+{% endblock %}
