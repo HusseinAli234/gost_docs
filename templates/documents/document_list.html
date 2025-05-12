@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Мои документы</h2>
-<a href="{% url 'document_create' %}" class="btn btn-primary mb-3">Создать новый документ</a>
+<a href="{% url 'documents:document_create' %}" class="btn btn-primary mb-3">Создать новый документ</a>
 
 {% if documents %}
   <div class="list-group">

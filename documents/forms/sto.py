@@ -9,7 +9,6 @@ class DocumentForm(forms.ModelForm):
             'work_type', 'specialty_code', 'specialty_name', 'title',
             'supervisor', 'student_name', 'consultants', 'approval_note',
             'city', 'year',
-            # если хотите редактировать факультет/кафедру тоже здесь добавьте
         ]
 
 class AbstractForm(forms.ModelForm):
