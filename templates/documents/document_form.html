@@ -17,43 +17,128 @@
                 <form method="post">
                     {% csrf_token %}
 
-                    {# ... поля формы здесь (title, template_type, RichTextFields и т.д.) ... #}
-                     <div class="mb-3 form-group">
-                        <label class="form-label">{{ form.title.label_tag }}</label>
-                        {{ form.title }}
-                        {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors|striptags }}</div>{% endif %}
-                    </div>
+                    {# Навигация по вкладкам #}
+                    <ul class="nav nav-tabs mb-3" id="documentTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="main-tab" data-bs-toggle="tab" data-bs-target="#main-tab-pane" type="button" role="tab" aria-controls="main-tab-pane" aria-selected="true">Основное</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="title-tab" data-bs-toggle="tab" data-bs-target="#title-tab-pane" type="button" role="tab" aria-controls="title-tab-pane" aria-selected="false">Титул</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="abstract-tab" data-bs-toggle="tab" data-bs-target="#abstract-tab-pane" type="button" role="tab" aria-controls="abstract-tab-pane" aria-selected="false">Реферат</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="performers-tab" data-bs-toggle="tab" data-bs-target="#performers-tab-pane" type="button" role="tab" aria-controls="performers-tab-pane" aria-selected="false">Исполнители</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="terms-tab" data-bs-toggle="tab" data-bs-target="#terms-tab-pane" type="button" role="tab" aria-controls="terms-tab-pane" aria-selected="false">Термины</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="abbrevs-tab" data-bs-toggle="tab" data-bs-target="#abbrevs-tab-pane" type="button" role="tab" aria-controls="abbrevs-tab-pane" aria-selected="false">Сокращения</button>
+                        </li>
+                         <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="references-tab" data-bs-toggle="tab" data-bs-target="#references-tab-pane" type="button" role="tab" aria-controls="references-tab-pane" aria-selected="false">Источники</button>
+                        </li>
+                         <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="appendices-tab" data-bs-toggle="tab" data-bs-target="#appendices-tab-pane" type="button" role="tab" aria-controls="appendices-tab-pane" aria-selected="false">Приложения</button>
+                        </li>
+                    </ul>
 
-                     <div class="mb-3 form-group">
-                        <label class="form-label">{{ form.template_type.label_tag }}</label>
-                        {{ form.template_type }}
-                        {% if form.template_type.errors %}<div class="text-danger small">{{ form.template_type.errors|striptags }}</div>{% endif %}
-                    </div>
-
-                    {% for field in form %}
-                        {% if field.name != 'title' and field.name != 'template_type' %}
-                            <div class="mb-3 form-group">
-                                <label class="form-label">{{ field.label_tag }}</label>
-                                {{ field }}
-                                {% if field.errors %}<div class="text-danger small">{{ field.errors|striptags }}</div>{% endif %}
-                                {% if field.help_text %}<div class="form-text text-muted small">{{ field.help_text|safe }}</div>{% endif %}
-                            </div>
-                        {% endif %}
-                    {% endfor %}
-                    {# Конец полей формы #}
-
-
-                    <button type="submit" class="btn btn-primary w-100 mt-3">
-                        {% if form.instance.pk %}Сохранить изменения{% else %}Создать документ{% endif %}
-                    </button>
-
-                    {# Добавляем кнопки экспорта только для существующих документов (при редактировании) #}
-                    {% if form.instance.pk %}
-                        <div class="mt-3 text-center">
-                            <a href="{% url 'document_export_docx' form.instance.pk %}" class="btn btn-secondary me-2">Экспорт в .docx</a>
-                            <a href="{% url 'document_export_pdf' form.instance.pk %}" class="btn btn-secondary">Экспорт в .pdf</a>
+                    {# Содержимое вкладок #}
+                    <div class="tab-content" id="documentTabContent">
+                        {# --- Вкладка: Основное --- #}
+                        <div class="tab-pane fade show active" id="main-tab-pane" role="tabpanel" aria-labelledby="main-tab" tabindex="0">
+                            <h5 class="visually-hidden">Основная информация</h5> {# Скрытый заголовок для доступности или можно убрать #}
+                            {{ form.as_p }}
                         </div>
-                    {% endif %}
+
+                        {# --- Вкладка: Титульный лист --- #}
+                        <div class="tab-pane fade" id="title-tab-pane" role="tabpanel" aria-labelledby="title-tab" tabindex="0">
+                            <h5 class="mt-3">Титульный лист</h5>
+                            {{ title_form.as_p }}
+                        </div>
+
+                        {# --- Вкладка: Реферат --- #}
+                        <div class="tab-pane fade" id="abstract-tab-pane" role="tabpanel" aria-labelledby="abstract-tab" tabindex="0">
+                             <h5 class="mt-3">Реферат</h5>
+                            {{ abstract_form.as_p }} {# CKEditor будет здесь, если настроен для этого поля #}
+                        </div>
+
+                        {# --- Вкладка: Исполнители --- #}
+                        <div class="tab-pane fade" id="performers-tab-pane" role="tabpanel" aria-labelledby="performers-tab" tabindex="0">
+                             <h5 class="mt-3">Исполнители</h5>
+                            {{ performer_formset.management_form }}
+                            {% for performer_form in performer_formset %}
+                                <div class="formset-instance border rounded p-3 mb-3"> {# Небольшая обертка для каждого исполнителя #}
+                                    {{ performer_form.as_p }}
+                                    {% if performer_form.DELETE %} {# Показать чекбокс удаления, если есть #}
+                                    {% endif %}
+                                </div>
+                                 {% if not forloop.last %}<hr>{% endif %}
+                            {% endfor %}
+                            {# Здесь можно добавить кнопку "Добавить исполнителя", если формсет динамический #}
+                        </div>
+
+                        {# --- Вкладка: Термины --- #}
+                        <div class="tab-pane fade" id="terms-tab-pane" role="tabpanel" aria-labelledby="terms-tab" tabindex="0">
+                            <h5 class="mt-3">Термины</h5>
+                            {{ term_formset.management_form }}
+                            {% for term_form in term_formset %}
+                                <div class="formset-instance border rounded p-3 mb-3">
+                                    {{ term_form.as_p }}
+                                     {% if term_form.DELETE %}
+                                    {% endif %}
+                                </div>
+                                {% if not forloop.last %}<hr>{% endif %}
+                            {% endfor %}
+                        </div>
+
+                        {# --- Вкладка: Сокращения --- #}
+                        <div class="tab-pane fade" id="abbrevs-tab-pane" role="tabpanel" aria-labelledby="abbrevs-tab" tabindex="0">
+                            <h5 class="mt-3">Сокращения</h5>
+                             {{ abbrev_formset.management_form }}
+                            {% for abbrev_form in abbrev_formset %}
+                                <div class="formset-instance border rounded p-3 mb-3">
+                                    {{ abbrev_form.as_p }}
+                                     {% if abbrev_form.DELETE %}
+                                    {% endif %}
+                                </div>
+                                {% if not forloop.last %}<hr>{% endif %}
+                            {% endfor %}
+                        </div>
+
+                        {# --- Вкладка: Источники --- #}
+                        <div class="tab-pane fade" id="references-tab-pane" role="tabpanel" aria-labelledby="references-tab" tabindex="0">
+                            <h5 class="mt-3">Источники</h5>
+                            {{ reference_formset.management_form }}
+                            {% for reference_form in reference_formset %}
+                                <div class="formset-instance border rounded p-3 mb-3">
+                                    {{ reference_form.as_p }}
+                                     {% if reference_form.DELETE %}
+                                    {% endif %}
+                                </div>
+                                {% if not forloop.last %}<hr>{% endif %}
+                            {% endfor %}
+                        </div>
+
+                        {# --- Вкладка: Приложения --- #}
+                        <div class="tab-pane fade" id="appendices-tab-pane" role="tabpanel" aria-labelledby="appendices-tab" tabindex="0">
+                             <h5 class="mt-3">Приложения</h5>
+                             {{ appendix_formset.management_form }}
+                            {% for appendix_form in appendix_formset %}
+                                <div class="formset-instance border rounded p-3 mb-3">
+                                    {{ appendix_form.as_p }}
+                                     {% if appendix_form.DELETE %}
+                                    {% endif %}
+                                </div>
+                                {% if not forloop.last %}<hr>{% endif %}
+                            {% endfor %}
+                        </div>
+                    </div> {# Конец tab-content #}
+
+                    {# Кнопка Сохранить находится вне вкладок, но внутри формы #}
+                    <button class="btn btn-primary mt-4" type="submit">Сохранить</button>
 
                 </form>
             </div>
@@ -63,9 +148,48 @@
 {% endblock %}
 
 {% block extra_js %}
+    {# Все media должны быть загружены, чтобы виджеты работали корректно, #}
+    {# даже если они находятся на неактивной вкладке при загрузке страницы #}
     {{ form.media }}
+    {{ title_form.media }}
+    {{ abstract_form.media }}
+    {{ performer_formset.media }}
+    {{ term_formset.media }}
+    {{ abbrev_formset.media }}
+    {{ reference_formset.media }}
+    {{ appendix_formset.media }}
+
+    {# Если используете динамические формсеты, скрипты для них подключаются здесь #}
+    <script>
+        // Небольшой скрипт для возможной инициализации чего-либо после переключения вкладок,
+        // например, если CKEditor не инициализируется на скрытых вкладках.
+        // var tabElms = document.querySelectorAll('button[data-bs-toggle="tab"]')
+        // tabElms.forEach(function (tabElm) {
+        //     tabElm.addEventListener('shown.bs.tab', function (event) {
+        //         // event.target // newly activated tab
+        //         // event.relatedTarget // previous active tab
+        //         // Можно добавить код для ре-инициализации виджетов на event.target, если нужно
+        //         console.log("Tab shown: " + event.target.id);
+        //         // Например, если CKEditor на вкладке Реферат:
+        //         if (event.target.id === 'abstract-tab') {
+        //            // Попробовать перерисовать CKEditor, если он плохо отображается
+        //            // Конкретный код зависит от вашей версии CKEditor и способа интеграции
+        //         }
+        //     })
+        // })
+    </script>
 {% endblock %}
 
 {% block extra_css %}
     {# {{ form.media.render_css }} #}
+    {# Дополнительные стили, если нужны #}
+    <style>
+        .formset-instance {
+            background-color: #f8f9fa; /* Легкий фон для разделения экземпляров формсета */
+        }
+        /* Можно добавить отступы внутри tab-pane, если стандартных не хватает */
+        .tab-pane {
+            padding-top: 1rem; /* Добавить отступ сверху внутри вкладки */
+        }
+    </style>
 {% endblock %}
