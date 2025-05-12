@@ -1,5 +1,5 @@
 from django import forms
-from .models import Document
+from ..models.gost import Document
 from ckeditor.widgets import CKEditorWidget
 
 class DocumentForm(forms.ModelForm):

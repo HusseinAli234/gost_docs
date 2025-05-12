@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Document
-from .forms import DocumentForm
+from ..models.gost import Document
+from ..forms.gost import DocumentForm
 from django.contrib.auth.decorators import login_required
 
 @login_required
