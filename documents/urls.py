@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import gost
+from documents.views import gost
 
 urlpatterns = [
     path('', gost.document_list, name='document_list'),

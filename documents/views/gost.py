@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models.gost import Document
-from .forms import DocumentForm,AppendixFormSet,TermFormSet,AbbreviationFormSet,PerformerFormSet,ReferenceFormSet,TitlePageForm,AbstractForm
+from documents.models.gost import Document
+from documents.forms.gost import DocumentForm,AppendixFormSet,TermFormSet,AbbreviationFormSet,PerformerFormSet,ReferenceFormSet,TitlePageForm,AbstractForm
 from django.contrib.auth.decorators import login_required
 from docx import Document as DocxDocument 
 

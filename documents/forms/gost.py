@@ -1,5 +1,5 @@
 from django import forms
-from ..models.gost import Document,TitlePage, Performer,Abstract,Abbreviation,Appendix,Term,Reference
+from documents.models.gost import Document,TitlePage, Performer,Abstract,Abbreviation,Appendix,Term,Reference
 from ckeditor.widgets import CKEditorWidget
 from django.forms import inlineformset_factory
 
