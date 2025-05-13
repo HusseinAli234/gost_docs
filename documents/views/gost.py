@@ -6,6 +6,12 @@ from django.views.generic import ListView, DetailView, View, UpdateView # Доб
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin # Используем миксины для CBV
 from django.contrib.auth.decorators import login_required # Оставим для примера экспорта (если он будет)
 from django.http import HttpResponse # Для экспорта
+from docx import Document as DocxDocument
+from docx.shared import Pt, Cm, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.style import WD_STYLE_TYPE
+from io import BytesIO
+import re
 
 # Импортируем модели и формы (пути могут отличаться в зависимости от структуры вашего проекта)
 # Убедитесь, что эти импорты верны для вашей структуры:
@@ -378,8 +384,240 @@ class DocumentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         """Возвращает URL для перенаправления после успешного обновления."""
         return reverse_lazy('document_detail', kwargs={'pk': self.object.pk})
 
-# --- Оставляем экспорт как FBV (или тоже можно переделать в CBV) ---
-# @login_required
-# def document_export_docx(request, pk):
-#     # ... ваш код экспорта ...
-#     pass
+# --- Функции для экспорта ---
+@login_required
+def document_export_docx(request, pk):
+    """
+    Экспортирует документ в формат DOCX
+    """
+    try:
+        # Получаем документ из базы данных
+        document = get_object_or_404(Document, pk=pk, user=request.user)
+        
+        # Создаем docx документ
+        docx = DocxDocument()
+        
+        # Настройка стилей документа
+        styles = docx.styles
+        
+        # Стиль для заголовков
+        style_heading1 = styles.add_style('CustomHeading1', WD_STYLE_TYPE.PARAGRAPH)
+        style_heading1.base_style = styles['Heading 1']
+        font = style_heading1.font
+        font.name = 'Times New Roman'
+        font.size = Pt(16)
+        font.bold = True
+        
+        # Стиль для текста
+        style_normal = styles['Normal']
+        font = style_normal.font
+        font.name = 'Times New Roman'
+        font.size = Pt(14)
+        
+        # Добавляем титульный лист
+        add_title_page(docx, document)
+
+        # Добавляем реферат
+        add_abstract(docx, document)
+        
+        # Добавляем основные разделы
+        add_sections(docx, document)
+        
+        # Сохраняем файл
+        buffer = BytesIO()
+        docx.save(buffer)
+        buffer.seek(0)
+        
+        # Отправляем файл пользователю
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        file_name = f"{document.title.replace(' ', '_')}.docx"
+        response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Ошибка при экспорте документа: {str(e)}")
+        return HttpResponse(f"Ошибка при экспорте документа: {str(e)}", status=500)
+
+def add_title_page(docx, document):
+    """
+    Добавляет титульный лист в docx документ
+    """
+    # Получаем объект титульного листа
+    try:
+        title_page = document.title_page
+    except:
+        title_page = None
+    
+    # Добавляем информацию титульного листа
+    p = docx.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if title_page and title_page.department:
+        p.add_run(title_page.department.upper()).bold = True
+    
+    # Добавляем отступ
+    for _ in range(3):
+        docx.add_paragraph()
+    
+    # Заголовок документа
+    p = docx.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run(document.title.upper()).bold = True
+    
+    # Тип отчета
+    if document.report_type:
+        p = docx.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        report_type_display = dict(document._meta.get_field('report_type').choices)[document.report_type]
+        p.add_run(f"{report_type_display.upper()} ОТЧЁТ").bold = True
+    
+    # Добавляем информацию о руководителе и исполнителях в нижней части титульного листа
+    for _ in range(5):
+        docx.add_paragraph()
+    
+    # Информация о руководителе
+    if title_page:
+        table = docx.add_table(rows=2, cols=2)
+        table.autofit = True
+        
+        # Левая сторона - руководитель
+        if title_page.head_position or title_page.head_full_name:
+            cell = table.cell(0, 0)
+            cell.text = title_page.head_position or "Руководитель проекта"
+            
+            cell = table.cell(1, 0)
+            cell.text = title_page.head_full_name or ""
+    
+    # Добавляем город и год в нижней части страницы
+    for _ in range(3):
+        docx.add_paragraph()
+    
+    p = docx.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run(f"{document.year}").bold = True
+    
+    # Добавляем разрыв страницы
+    docx.add_page_break()
+
+def add_abstract(docx, document):
+    """
+    Добавляет реферат в docx документ
+    """
+    # Заголовок
+    p = docx.add_paragraph("РЕФЕРАТ", style='CustomHeading1')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Получаем объект реферата
+    try:
+        abstract = document.abstract
+        
+        # Добавляем содержимое реферата
+        if abstract and abstract.content:
+            # Очищаем HTML теги
+            clean_text = re.sub(r'<.*?>', '', abstract.content)
+            p = docx.add_paragraph(clean_text)
+            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    except:
+        # Если реферат не найден, добавляем пустой параграф
+        docx.add_paragraph()
+    
+    # Разрыв страницы
+    docx.add_page_break()
+
+def add_sections(docx, document):
+    """
+    Добавляет основные разделы документа
+    """
+    # Содержание
+    p = docx.add_paragraph("СОДЕРЖАНИЕ", style='CustomHeading1')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # TODO: Автоматически генерировать содержание
+    docx.add_paragraph()
+    docx.add_page_break()
+    
+    # Введение
+    p = docx.add_paragraph("ВВЕДЕНИЕ", style='CustomHeading1')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    if document.introduction:
+        # Очищаем HTML теги
+        clean_text = re.sub(r'<.*?>', '', document.introduction)
+        p = docx.add_paragraph(clean_text)
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    else:
+        docx.add_paragraph()
+    
+    docx.add_page_break()
+    
+    # Основная часть
+    p = docx.add_paragraph("ОСНОВНАЯ ЧАСТЬ", style='CustomHeading1')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    if document.main_part:
+        # Очищаем HTML теги
+        clean_text = re.sub(r'<.*?>', '', document.main_part)
+        p = docx.add_paragraph(clean_text)
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    else:
+        docx.add_paragraph()
+    
+    docx.add_page_break()
+    
+    # Заключение
+    p = docx.add_paragraph("ЗАКЛЮЧЕНИЕ", style='CustomHeading1')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    if document.conclusion:
+        # Очищаем HTML теги
+        clean_text = re.sub(r'<.*?>', '', document.conclusion)
+        p = docx.add_paragraph(clean_text)
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    else:
+        docx.add_paragraph()
+    
+    docx.add_page_break()
+    
+    # Список использованных источников
+    p = docx.add_paragraph("СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", style='CustomHeading1')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Добавляем список источников
+    try:
+        references = document.references.all().order_by('order')
+        if references.exists():
+            for i, ref in enumerate(references, 1):
+                p = docx.add_paragraph(f"{i}. {ref.citation}")
+                p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        else:
+            docx.add_paragraph()
+    except:
+        docx.add_paragraph()
+    
+    # Добавляем приложения, если они есть
+    try:
+        appendices = document.appendices.all().order_by('order')
+        if appendices.exists():
+            docx.add_page_break()
+            
+            for appendix in appendices:
+                p = docx.add_paragraph(f"ПРИЛОЖЕНИЕ {appendix.label}", style='CustomHeading1')
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                if appendix.title:
+                    p = docx.add_paragraph(appendix.title)
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    p.style = 'CustomHeading1'
+                
+                if appendix.content:
+                    # Очищаем HTML теги
+                    clean_text = re.sub(r'<.*?>', '', appendix.content)
+                    p = docx.add_paragraph(clean_text)
+                    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                
+                docx.add_page_break()
+    except:
+        pass

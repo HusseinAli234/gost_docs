@@ -9,6 +9,7 @@
             <div class="d-flex gap-2 mb-3">
                 <a href="{% url 'document_edit' document.pk %}" class="btn btn-primary">Редактировать</a>
                 <!-- Кнопки экспорта можно добавить, когда будут реализованы соответствующие функции -->
+                <a href="{% url 'document_export_docx' document.pk %}" class="btn btn-success">Экспорт в DOCX</a>
                 <a href="{% url 'document_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
             </div>
         </div>
