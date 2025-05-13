@@ -23,6 +23,11 @@ class Document(models.Model):
 
     def __str__(self):
         return self.title
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Документ ГОСТ'
+        verbose_name_plural = 'Документы ГОСТ'
 
 
 class TitlePage(models.Model):

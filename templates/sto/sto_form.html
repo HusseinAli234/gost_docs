@@ -1,60 +1,147 @@
 {% extends 'base.html' %}
 {% block title %}
-  {% if form.instance.pk %}Редактирование{% else %}Создание{% endif %} документа
+  {% if form.instance.pk %}Редактирование документа{% else %}Создание документа{% endif %}
 {% endblock %}
+
 {% block content %}
-  <h1>
-    {% if form.instance.pk %}Редактирование{% else %}Создание{% endif %} документа
-  </h1>
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    <div class="mb-4">
-      {{ form.as_p }}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <h3 class="card-title text-center mb-4">
+          {% if form.instance.pk %}Редактирование документа{% else %}Создание документа{% endif %}
+        </h3>
+
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+
+          <ul class="nav nav-tabs mb-3" id="stoTab" role="tablist">
+            <li class="nav-item"><button class="nav-link active" id="main-tab" data-bs-toggle="tab" data-bs-target="#main" type="button">Основное</button></li>
+            <li class="nav-item"><button class="nav-link" id="abstract-tab" data-bs-toggle="tab" data-bs-target="#abstract" type="button">Реферат</button></li>
+            <li class="nav-item"><button class="nav-link" id="sections-tab" data-bs-toggle="tab" data-bs-target="#sections" type="button">Разделы</button></li>
+            <li class="nav-item"><button class="nav-link" id="biblio-tab" data-bs-toggle="tab" data-bs-target="#biblio" type="button">Литература</button></li>
+            <li class="nav-item"><button class="nav-link" id="apps-tab" data-bs-toggle="tab" data-bs-target="#apps" type="button">Приложения</button></li>
+          </ul>
+
+          <div class="tab-content" id="stoTabContent">
+            <div class="tab-pane fade show active" id="main">
+              {{ form.as_p }}
+            </div>
+            <div class="tab-pane fade" id="abstract">
+              {{ abstract_form.as_p }}
+            </div>
+
+            {# Разделы #}
+            <div class="tab-pane fade" id="sections">
+              {{ sections.management_form }}
+              <div id="sections-container">
+                {% for fs in sections.forms %}
+                  <div class="border rounded p-3 mb-3 formset-instance">
+                    {{ fs.as_p }}
+                    {% if fs.instance.pk %}
+                      <div class="form-check">
+                        {{ fs.DELETE }} <label class="form-check-label">Удалить</label>
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+              <button type="button" class="btn btn-success btn-sm" id="add-section">Добавить раздел</button>
+
+              {# Скрытая пустая форма для клонирования #}
+              <div id="empty-section-form" class="d-none">
+                <div class="border rounded p-3 mb-3 formset-instance">
+                  {{ sections.empty_form.as_p }}
+                </div>
+              </div>
+            </div>
+
+            {# Литература #}
+            <div class="tab-pane fade" id="biblio">
+              {{ biblio.management_form }}
+              <div id="biblio-container">
+                {% for fs in biblio.forms %}
+                  <div class="border rounded p-3 mb-3 formset-instance">
+                    {{ fs.as_p }}
+                    {% if fs.instance.pk %}
+                      <div class="form-check">
+                        {{ fs.DELETE }} <label class="form-check-label">Удалить</label>
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+              <button type="button" class="btn btn-success btn-sm" id="add-biblio">Добавить источник</button>
+
+              <div id="empty-biblio-form" class="d-none">
+                <div class="border rounded p-3 mb-3 formset-instance">
+                  {{ biblio.empty_form.as_p }}
+                </div>
+              </div>
+            </div>
+
+            {# Приложения #}
+            <div class="tab-pane fade" id="apps">
+              {{ appendices.management_form }}
+              <div id="apps-container">
+                {% for fs in appendices.forms %}
+                  <div class="border rounded p-3 mb-3 formset-instance">
+                    {{ fs.as_p }}
+                    {% if fs.instance.pk %}
+                      <div class="form-check">
+                        {{ fs.DELETE }} <label class="form-check-label">Удалить</label>
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+              <button type="button" class="btn btn-success btn-sm" id="add-app">Добавить приложение</button>
+
+              <div id="empty-app-form" class="d-none">
+                <div class="border rounded p-3 mb-3 formset-instance">
+                  {{ appendices.empty_form.as_p }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="{% url 'documents:sto_list' %}" class="btn btn-link">Отмена</a>
+          </div>
+        </form>
+      </div>
     </div>
+  </div>
+</div>
+{% endblock %}
 
-    <hr>
-    <h2>Реферат</h2>
-    <div class="mb-4">
-      {{ abstract_form.as_p }}
-    </div>
+{% block extra_js %}
+  {{ form.media }} {{ abstract_form.media }}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Общая функция для добавления формы
+      function setupAddBtn(btnId, containerId, emptyFormId, prefix) {
+        const btn = document.getElementById(btnId);
+        btn.addEventListener('click', () => {
+          const total = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
+          let count = parseInt(total.value);
+          const emptyHtml = document.getElementById(emptyFormId).innerHTML.replace(/__prefix__/g, count);
+          document.getElementById(containerId).insertAdjacentHTML('beforeend', emptyHtml);
+          total.value = count + 1;
+        });
+      }
 
-    <hr>
-    <h2>Разделы</h2>
-    {{ sections.management_form }}
-    {% for fs in sections.forms %}
-      <div class="card mb-2 p-3">
-        {{ fs.as_p }}
-        {% if fs.instance.pk %}
-          {{ fs.DELETE }} <label>Удалить</label>
-        {% endif %}
-      </div>
-    {% endfor %}
+      setupAddBtn('add-section', 'sections-container', 'empty-section-form', '{{ sections.prefix }}');
+      setupAddBtn('add-biblio',  'biblio-container',   'empty-biblio-form',  '{{ biblio.prefix }}');
+      setupAddBtn('add-app',     'apps-container',     'empty-app-form',     '{{ appendices.prefix }}');
+    });
+  </script>
+{% endblock %}
 
-    <hr>
-    <h2>Список литературы</h2>
-    {{ biblio.management_form }}
-    {% for fs in biblio.forms %}
-      <div class="card mb-2 p-3">
-        {{ fs.as_p }}
-        {% if fs.instance.pk %}
-          {{ fs.DELETE }} <label>Удалить</label>
-        {% endif %}
-      </div>
-    {% endfor %}
-
-    <hr>
-    <h2>Приложения</h2>
-    {{ appendices.management_form }}
-    {% for fs in appendices.forms %}
-      <div class="card mb-2 p-3">
-        {{ fs.as_p }}
-        {% if fs.instance.pk %}
-          {{ fs.DELETE }} <label>Удалить</label>
-        {% endif %}
-      </div>
-    {% endfor %}
-
-    <button type="submit" class="btn btn-primary mt-3">Сохранить</button>
-    <a href="{% url 'documents:list' %}" class="btn btn-link mt-3">Отмена</a>
-  </form>
+{% block extra_css %}
+<style>
+  .formset-instance { background: #f8f9fa; }
+  .tab-pane { padding-top: 1rem; }
+</style>
 {% endblock %}

@@ -7,9 +7,8 @@
         <div class="col">
             <h1>{{ document.title }}</h1>
             <div class="d-flex gap-2 mb-3">
-                <a href="{% url 'document_edit' document.pk %}" class="btn btn-primary">Редактировать</a>
-                <!-- Кнопки экспорта можно добавить, когда будут реализованы соответствующие функции -->
-                <a href="{% url 'document_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
+                <a href="{% url 'documents:gost_edit' document.pk %}" class="btn btn-primary">Редактировать</a>
+                <a href="{% url 'documents:gost_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
             </div>
         </div>
     </div>
@@ -38,26 +37,11 @@
                 </div>
                 <div class="card-body">
                     <table class="table table-bordered">
-                        <tr>
-                            <th style="width: 30%">Название документа:</th>
-                            <td>{{ document.title }}</td>
-                        </tr>
-                        <tr>
-                            <th>Тип шаблона:</th>
-                            <td>{{ document.get_template_type_display }}</td>
-                        </tr>
-                        <tr>
-                            <th>Тип отчета:</th>
-                            <td>{{ document.get_report_type_display }}</td>
-                        </tr>
-                        <tr>
-                            <th>Год:</th>
-                            <td>{{ document.year }}</td>
-                        </tr>
-                        <tr>
-                            <th>Дата создания:</th>
-                            <td>{{ document.created_at|date:"d.m.Y H:i" }}</td>
-                        </tr>
+                        <tr><th style="width:30%">Название документа:</th><td>{{ document.title }}</td></tr>
+                        <tr><th>Тип шаблона:</th><td>{{ document.get_template_type_display }}</td></tr>
+                        <tr><th>Тип отчета:</th><td>{{ document.get_report_type_display }}</td></tr>
+                        <tr><th>Год:</th><td>{{ document.year }}</td></tr>
+                        <tr><th>Дата создания:</th><td>{{ document.created_at|date:"d.m.Y H:i" }}</td></tr>
                     </table>
                 </div>
             </div>
@@ -69,342 +53,251 @@
                 </div>
                 <div class="card-body">
                     {% if document.title_page %}
-                    <table class="table table-bordered">
-                        {% if document.title_page.stage_name %}
-                        <tr>
-                            <th style="width: 30%">Наименование этапа:</th>
-                            <td>{{ document.title_page.stage_name }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.udk %}
-                        <tr>
-                            <th>УДК:</th>
-                            <td>{{ document.title_page.udk }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.registration_number_nioktr %}
-                        <tr>
-                            <th>Регистрационный номер НИОКТР:</th>
-                            <td>{{ document.title_page.registration_number_nioktr }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.registration_number_ikrbs %}
-                        <tr>
-                            <th>Регистрационный номер ИКРБС:</th>
-                            <td>{{ document.title_page.registration_number_ikrbs }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.program_code %}
-                        <tr>
-                            <th>Код программы:</th>
-                            <td>{{ document.title_page.program_code }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.book_number %}
-                        <tr>
-                            <th>Номер книги:</th>
-                            <td>{{ document.title_page.book_number }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.federal_program_name %}
-                        <tr>
-                            <th>Название федеральной программы:</th>
-                            <td>{{ document.title_page.federal_program_name }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.department %}
-                        <tr>
-                            <th>Подразделение:</th>
-                            <td>{{ document.title_page.department }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.head_full_name %}
-                        <tr>
-                            <th>ФИО руководителя:</th>
-                            <td>{{ document.title_page.head_full_name }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.head_position %}
-                        <tr>
-                            <th>Должность руководителя:</th>
-                            <td>{{ document.title_page.head_position }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.head_degree %}
-                        <tr>
-                            <th>Ученая степень руководителя:</th>
-                            <td>{{ document.title_page.head_degree }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if document.title_page.approval_date %}
-                        <tr>
-                            <th>Дата утверждения:</th>
-                            <td>{{ document.title_page.approval_date|date:"d.m.Y" }}</td>
-                        </tr>
-                        {% endif %}
-                    </table>
+                        <table class="table table-bordered">
+                            {% if document.title_page.stage_name %}
+                            <tr><th>Наименование этапа:</th><td>{{ document.title_page.stage_name }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.udk %}
+                            <tr><th>УДК:</th><td>{{ document.title_page.udk }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.registration_number_nioktr %}
+                            <tr><th>Рег. номер НИОКТР:</th><td>{{ document.title_page.registration_number_nioktr }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.registration_number_ikrbs %}
+                            <tr><th>Рег. номер ИКРБС:</th><td>{{ document.title_page.registration_number_ikrbs }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.program_code %}
+                            <tr><th>Код программы:</th><td>{{ document.title_page.program_code }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.book_number %}
+                            <tr><th>Номер книги:</th><td>{{ document.title_page.book_number }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.federal_program_name %}
+                            <tr><th>Федеральная программа:</th><td>{{ document.title_page.federal_program_name }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.department %}
+                            <tr><th>Подразделение:</th><td>{{ document.title_page.department }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.head_full_name %}
+                            <tr><th>ФИО руководителя:</th><td>{{ document.title_page.head_full_name }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.head_position %}
+                            <tr><th>Должность руководителя:</th><td>{{ document.title_page.head_position }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.head_degree %}
+                            <tr><th>Ученая степень руководителя:</th><td>{{ document.title_page.head_degree }}</td></tr>
+                            {% endif %}
+                            {% if document.title_page.approval_date %}
+                            <tr><th>Дата утверждения:</th>
+                                <td>{{ document.title_page.approval_date|date:"d.m.Y" }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
                     {% else %}
-                    <p class="text-muted">Информация о титульном листе не заполнена.</p>
+                        <p class="text-muted">Информация о титульном листе не заполнена.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Реферат -->
             <div id="abstract" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Реферат</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Реферат</h2></div>
                 <div class="card-body">
                     {% if document.abstract %}
-                    <div class="rich-text-content">
-                        {{ document.abstract.content|safe }}
-                    </div>
+                        <div class="rich-text-content">{{ document.abstract.content|safe }}</div>
                     {% else %}
-                    <p class="text-muted">Реферат не заполнен.</p>
+                        <p class="text-muted">Реферат не заполнен.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Исполнители -->
             <div id="performers" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Исполнители</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Исполнители</h2></div>
                 <div class="card-body">
                     {% if document.performers.exists %}
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>ФИО</th>
-                                    <th>Должность</th>
-                                    <th>Ученая степень</th>
-                                    <th>Участие</th>
-                                    <th>Подписано</th>
-                                    <th>Дата подписи</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for performer in document.performers.all %}
-                                <tr>
-                                    <td>{{ performer.full_name }}</td>
-                                    <td>{{ performer.position }}</td>
-                                    <td>{{ performer.degree }}</td>
-                                    <td>{{ performer.participation }}</td>
-                                    <td>{% if performer.signed %}Да{% else %}Нет{% endif %}</td>
-                                    <td>{{ performer.date_signed|date:"d.m.Y"|default:"-" }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>ФИО</th><th>Должность</th><th>Ученая степень</th>
+                                        <th>Участие</th><th>Подписано</th><th>Дата подписи</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in document.performers.all %}
+                                    <tr>
+                                        <td>{{ p.full_name }}</td>
+                                        <td>{{ p.position }}</td>
+                                        <td>{{ p.degree }}</td>
+                                        <td>{{ p.participation }}</td>
+                                        <td>{% if p.signed %}Да{% else %}Нет{% endif %}</td>
+                                        <td>{{ p.date_signed|date:"d.m.Y"|default:"-" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     {% else %}
-                    <p class="text-muted">Исполнители не добавлены.</p>
+                        <p class="text-muted">Исполнители не добавлены.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Термины -->
             <div id="terms" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Термины и определения</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Термины и определения</h2></div>
                 <div class="card-body">
                     {% if document.terms.exists %}
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Термин</th>
-                                    <th>Определение</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for term in document.terms.all %}
-                                <tr>
-                                    <td>{{ term.term }}</td>
-                                    <td>{{ term.definition }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead><tr><th>Термин</th><th>Определение</th></tr></thead>
+                                <tbody>
+                                    {% for t in document.terms.all %}
+                                    <tr><td>{{ t.term }}</td><td>{{ t.definition }}</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     {% else %}
-                    <p class="text-muted">Термины не добавлены.</p>
+                        <p class="text-muted">Термины не добавлены.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Сокращения -->
             <div id="abbreviations" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Сокращения</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Сокращения</h2></div>
                 <div class="card-body">
                     {% if document.abbreviations.exists %}
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Сокращение</th>
-                                    <th>Расшифровка</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for abbrev in document.abbreviations.all %}
-                                <tr>
-                                    <td>{{ abbrev.abbreviation }}</td>
-                                    <td>{{ abbrev.meaning }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead><tr><th>Сокращение</th><th>Расшифровка</th></tr></thead>
+                                <tbody>
+                                    {% for a in document.abbreviations.all %}
+                                    <tr><td>{{ a.abbreviation }}</td><td>{{ a.meaning }}</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     {% else %}
-                    <p class="text-muted">Сокращения не добавлены.</p>
+                        <p class="text-muted">Сокращения не добавлены.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Введение -->
             <div id="introduction" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Введение</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Введение</h2></div>
                 <div class="card-body">
                     {% if document.introduction %}
-                    <div class="rich-text-content">
-                        {{ document.introduction|safe }}
-                    </div>
+                        <div class="rich-text-content">{{ document.introduction|safe }}</div>
                     {% else %}
-                    <p class="text-muted">Введение не заполнено.</p>
+                        <p class="text-muted">Введение не заполнено.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Основная часть -->
             <div id="main-part" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Основная часть</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Основная часть</h2></div>
                 <div class="card-body">
                     {% if document.main_part %}
-                    <div class="rich-text-content">
-                        {{ document.main_part|safe }}
-                    </div>
+                        <div class="rich-text-content">{{ document.main_part|safe }}</div>
                     {% else %}
-                    <p class="text-muted">Основная часть не заполнена.</p>
+                        <p class="text-muted">Основная часть не заполнена.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Заключение -->
             <div id="conclusion" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Заключение</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Заключение</h2></div>
                 <div class="card-body">
                     {% if document.conclusion %}
-                    <div class="rich-text-content">
-                        {{ document.conclusion|safe }}
-                    </div>
+                        <div class="rich-text-content">{{ document.conclusion|safe }}</div>
                     {% else %}
-                    <p class="text-muted">Заключение не заполнено.</p>
+                        <p class="text-muted">Заключение не заполнено.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Источники -->
             <div id="references" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Список использованных источников</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Список использованных источников</h2></div>
                 <div class="card-body">
                     {% if document.references.exists %}
-                    <ol>
-                        {% for reference in document.references.all %}
-                        <li>{{ reference.citation }}</li>
-                        {% endfor %}
-                    </ol>
+                        <ol>
+                            {% for r in document.references.all %}
+                                <li>{{ r.citation }}</li>
+                            {% endfor %}
+                        </ol>
                     {% else %}
-                    <p class="text-muted">Источники не добавлены.</p>
+                        <p class="text-muted">Источники не добавлены.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Приложения -->
             <div id="appendices" class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Приложения</h2>
-                </div>
+                <div class="card-header"><h2 class="h5 mb-0">Приложения</h2></div>
                 <div class="card-body">
                     {% if document.appendices.exists %}
-                    <div class="accordion" id="appendixAccordion">
-                        {% for appendix in document.appendices.all %}
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="heading{{ appendix.id }}">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ appendix.id }}" aria-expanded="false" aria-controls="collapse{{ appendix.id }}">
-                                    Приложение {{ appendix.label }} - {{ appendix.title }}
-                                </button>
-                            </h2>
-                            <div id="collapse{{ appendix.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ appendix.id }}" data-bs-parent="#appendixAccordion">
-                                <div class="accordion-body">
-                                    <div class="rich-text-content">
-                                        {{ appendix.content|safe }}
+                        <div class="accordion" id="appendixAccordion">
+                            {% for app in document.appendices.all %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ app.id }}">
+                                    <button class="accordion-button collapsed"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#collapse{{ app.id }}"
+                                            aria-expanded="false"
+                                            aria-controls="collapse{{ app.id }}">
+                                        Приложение {{ app.label }}{% if app.title %}: {{ app.title }}{% endif %}
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ app.id }}"
+                                     class="accordion-collapse collapse"
+                                     aria-labelledby="heading{{ app.id }}"
+                                     data-bs-parent="#appendixAccordion">
+                                    <div class="accordion-body">
+                                        <div class="rich-text-content">
+                                            {{ app.content|safe }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
-                    </div>
                     {% else %}
-                    <p class="text-muted">Приложения не добавлены.</p>
+                        <p class="text-muted">Приложения не добавлены.</p>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block extra_css %}
 <style>
-    .rich-text-content img {
-        max-width: 100%;
-        height: auto;
-    }
-    .list-group-item.active {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
-    }
+.rich-text-content img { max-width:100%; height:auto; }
+.list-group-item.active { background-color:#0d6efd; border-color:#0d6efd; }
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Активация пункта меню при скролле
-    document.addEventListener('DOMContentLoaded', function() {
-        const sections = document.querySelectorAll('.card');
-        const navItems = document.querySelectorAll('.list-group-item');
-
-        window.addEventListener('scroll', function() {
-            let current = '';
-            
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop - 100;
-                
-                if (pageYOffset >= sectionTop) {
-                    current = section.getAttribute('id');
-                }
-            });
-            
-            navItems.forEach(item => {
-                item.classList.remove('active');
-                if (item.getAttribute('href').substring(1) === current) {
-                    item.classList.add('active');
-                }
-            });
+document.addEventListener('DOMContentLoaded', function(){
+    const sections = document.querySelectorAll('.card');
+    const navItems = document.querySelectorAll('.list-group-item');
+    window.addEventListener('scroll', function(){
+        let current = '';
+        sections.forEach(s => { if (pageYOffset >= s.offsetTop - 100) current = s.id; });
+        navItems.forEach(i => {
+            i.classList.toggle('active', i.getAttribute('href').substring(1) === current);
         });
     });
+});
 </script>
-{% endblock %}
 {% endblock %}

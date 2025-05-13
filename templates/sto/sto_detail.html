@@ -1,52 +1,155 @@
 {% extends 'base.html' %}
-{% block title %}Документ: {{ sto.title }} | ГОСТ Документы{% endblock %}
+
+{% block title %}
+  {{ sto.title }} | СТО Документы
+{% endblock %}
+
 {% block content %}
+<div class="container">
+  <div class="row mb-4">
+    <div class="col">
+      <h1>{{ sto.title }}</h1>
+      <div class="d-flex gap-2 mb-3">
+        <a href="{% url 'documents:sto_edit' sto.pk %}" class="btn btn-primary">Редактировать</a>
+        <a href="{% url 'documents:sto_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
+      </div>
+    </div>
+  </div>
 
-<h1>{{ sto.get_work_type_display }} «{{ sto.title }}»</h1>
-<p><strong>Код Специальности:</strong> {{ sto.specialty_code}}<br>
-<strong>Наименование специальности/направления:</strong> {{ sto.specialty_name}}<br>
-<p><strong>Студент:</strong> {{ sto.student_name }}<br>
-<strong>Руководитель:</strong> {{ sto.supervisor }}<br>
-<strong>Город:</strong> {{ sto.city }}<br>
-<strong>Год:</strong> {{ sto.year }}<br>
+  <div class="row">
+    <!-- Навигация -->
+    <div class="col-md-3">
+      <div class="list-group mb-4" id="stoNav">
+        <a href="#general" class="list-group-item list-group-item-action active">Основная информация</a>
+        <a href="#abstract" class="list-group-item list-group-item-action">Реферат</a>
+        <a href="#sections" class="list-group-item list-group-item-action">Содержание</a>
+        <a href="#biblio" class="list-group-item list-group-item-action">Литература</a>
+        <a href="#appendices" class="list-group-item list-group-item-action">Приложения</a>
+      </div>
+    </div>
 
-{% if sto.abstract %}
-  <h2>Реферат</h2>
-  <p><strong>Кол-во страниц:</strong> {{ sto.abstract.page_count}}<br>
-  <strong>Кол-во формул:</strong> {{ sto.abstract.formulas_count}}<br>
-  <strong>Кол-во приложений:</strong> {{ sto.abstract.appendices_count}}<br>
-  <strong>Кол-во источников:</strong> {{ sto.abstract.references_count}}<br>
-  <strong>Кол-во листов графического материала:</strong> {{ sto.abstract.graphic_sheets}}<br>
-  <p><em>Ключевые слова:</em> {{ sto.abstract.keywords }}</p>
-  <div>{{ sto.abstract.text|linebreaks }}</div>
-{% endif %}
+    <!-- Основная часть -->
+    <div class="col-md-9">
+      <!-- Основная информация -->
+      <div id="general" class="card mb-4">
+        <div class="card-header">
+          <h2 class="h5 mb-0">Основная информация</h2>
+        </div>
+        <div class="card-body">
+          <table class="table table-bordered">
+            <tr><th style="width:30%">Вид работы:</th><td>{{ sto.get_work_type_display }}</td></tr>
+            <tr><th>Код специальности:</th><td>{{ sto.specialty_code }}</td></tr>
+            <tr><th>Направление:</th><td>{{ sto.specialty_name }}</td></tr>
+            <tr><th>Студент:</th><td>{{ sto.student_name }}</td></tr>
+            <tr><th>Руководитель:</th><td>{{ sto.supervisor }}</td></tr>
+            <tr><th>Город:</th><td>{{ sto.city }}</td></tr>
+            <tr><th>Год:</th><td>{{ sto.year }}</td></tr>
+            <tr><th>Создан:</th><td>{{ sto.created_at|date:"d.m.Y H:i" }}</td></tr>
+            <tr><th>Обновлён:</th><td>{{ sto.updated_at|date:"d.m.Y H:i" }}</td></tr>
+          </table>
+        </div>
+      </div>
 
-{% if sto.sections.exists %}
-  <h2>Содержание</h2>
-  {% for sec in sto.sections.all %}
-    <p><h3>{{ sec.order }}. {{ sec.title }}</h3>
-    <div>{{ sec.content|safe }}</div>
-  {% endfor %}
-{% endif %}
-{% if sto.biblio.exists %}
-  <p><h2>Список литературы</h2>
-  <ol>
-    {% for item in sto.biblio.all %}
-      <li>{{ item.entry_text }}</li>
-    {% endfor %}
-  </ol>
-{% endif %}
-{% if sto.appendices.exists %}
-  <h2>Приложения</h2>
-  <ul>
-    {% for app in sto.appendices.all %}
-      <li><a href="{{ app.content.url }}">Приложение {{ app.label }}{% if app.title %}: {{ app.title }}{% endif %}</a></li>
-    {% endfor %}
-  </ul>
-{% endif %}
-<div class="mt-4">
-  <a href="{% url 'documents:edit' sto.pk %}" class="btn btn-secondary me-2">Редактировать</a>
-  <a href="{% url 'documents:delete' sto.pk %}" class="btn btn-danger">Удалить</a>
-  <a href="{% url 'documents:list' %}" class="btn btn-link">Назад к списку</a>
+      <!-- Реферат -->
+      <div id="abstract" class="card mb-4">
+        <div class="card-header"><h2 class="h5 mb-0">Реферат</h2></div>
+        <div class="card-body">
+          {% if sto.abstract %}
+            <table class="table table-borderless mb-3">
+              <tr><th>Страниц:</th><td>{{ sto.abstract.page_count }}</td></tr>
+              <tr><th>Иллюстраций:</th><td>{{ sto.abstract.illustrations_count }}</td></tr>
+              <tr><th>Таблиц:</th><td>{{ sto.abstract.tables_count }}</td></tr>
+              <tr><th>Формул:</th><td>{{ sto.abstract.formulas_count }}</td></tr>
+              <tr><th>Приложений:</th><td>{{ sto.abstract.appendices_count }}</td></tr>
+              <tr><th>Источников:</th><td>{{ sto.abstract.references_count }}</td></tr>
+              <tr><th>Граф. листов:</th><td>{{ sto.abstract.graphic_sheets }}</td></tr>
+            </table>
+            <p><em>Ключевые слова:</em> {{ sto.abstract.keywords }}</p>
+            <div class="rich-text-content">{{ sto.abstract.text|linebreaks }}</div>
+          {% else %}
+            <p class="text-muted">Реферат не заполнен.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Содержание -->
+      <div id="sections" class="card mb-4">
+        <div class="card-header"><h2 class="h5 mb-0">Содержание</h2></div>
+        <div class="card-body">
+          {% if sto.sections.exists %}
+            {% for sec in sto.sections.all %}
+              <div class="mb-4">
+                <h5>{{ sec.order }}. {{ sec.title }}</h5>
+                <div class="rich-text-content">{{ sec.content|safe }}</div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted">Разделы не добавлены.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Литература -->
+      <div id="biblio" class="card mb-4">
+        <div class="card-header"><h2 class="h5 mb-0">Список литературы</h2></div>
+        <div class="card-body">
+          {% if sto.biblio.exists %}
+            <ol>
+              {% for item in sto.biblio.all %}
+                <li>{{ item.entry_text }}</li>
+              {% endfor %}
+            </ol>
+          {% else %}
+            <p class="text-muted">Источники не добавлены.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Приложения -->
+      <div id="appendices" class="card mb-4">
+        <div class="card-header"><h2 class="h5 mb-0">Приложения</h2></div>
+        <div class="card-body">
+          {% if sto.appendices.exists %}
+            <ul class="list-unstyled">
+              {% for app in sto.appendices.all %}
+                <li>
+                  <a href="{{ app.content.url }}" target="_blank">
+                    Приложение {{ app.label }}{% if app.title %}: {{ app.title }}{% endif %}
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-muted">Приложения не добавлены.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.rich-text-content img { max-width: 100%; height: auto; }
+.list-group-item.active { background-color: #0d6efd; border-color: #0d6efd; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const sections = document.querySelectorAll('.card');
+    const navItems = document.querySelectorAll('#stoNav .list-group-item');
+    window.addEventListener('scroll', function() {
+      let current = '';
+      sections.forEach(card => {
+        if (pageYOffset >= card.offsetTop - 100) current = card.id;
+      });
+      navItems.forEach(item => {
+        item.classList.toggle('active', item.getAttribute('href') === '#' + current);
+      });
+    });
+  });
+</script>
 {% endblock %}

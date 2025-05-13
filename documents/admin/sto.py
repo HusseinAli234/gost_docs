@@ -1,5 +1,5 @@
 from django.contrib import admin
-from documents.models import Document, Abstract, Section, BibliographyEntry, Appendix
+from documents.models import Document_sto, Abstract_sto, Section, BibliographyEntry, Appendix_sto
 
 class SectionInline(admin.TabularInline):
     model = Section
@@ -10,15 +10,15 @@ class BibliographyInline(admin.TabularInline):
     extra = 0
 
 class AppendixInline(admin.TabularInline):
-    model = Appendix
+    model = Appendix_sto
     extra = 0
 
 class AbstractInline(admin.StackedInline):
-    model = Abstract
+    model = Abstract_sto
     extra = 0
     max_num = 1
 
-@admin.register(Document)
+@admin.register(Document_sto)
 class DocumentAdmin(admin.ModelAdmin):
     list_display = ('title', 'work_type', 'student_name', 'year', 'city')
     search_fields = ('title', 'student_name', 'supervisor')

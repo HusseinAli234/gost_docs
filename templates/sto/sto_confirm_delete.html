@@ -1,11 +1,12 @@
+{# templates/sto/sto_confirm_delete.html #}
 {% extends 'base.html' %}
-{% block title %}Удалить документ | ГОСТ Документы{% endblock %}
+{% block title %}Удалить документ | СТО Документы{% endblock %}
 {% block content %}
 <h1>Удаление документа</h1>
 <p>Вы уверены, что хотите удалить документ «{{ object }}»?</p>
 <form method="post">
   {% csrf_token %}
   <button type="submit" class="btn btn-danger">Да, удалить</button>
-  <a href="{% url 'documents:detail' object.pk %}" class="btn btn-link">Отмена</a>
+  <a href="{% url 'documents:sto_detail' object.pk %}" class="btn btn-link">Отмена</a>
 </form>
 {% endblock %}

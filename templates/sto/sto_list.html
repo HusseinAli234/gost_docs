@@ -1,18 +1,19 @@
+{# templates/sto/sto_list.html #}
 {% extends 'base.html' %}
-{% block title %}Мои документы | ГОСТ Документы{% endblock %}
+{% block title %}Мои документы | СТО Документы{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Мои документы</h1>
-    <a href="{% url 'documents:create' %}" class="btn btn-primary">Создать новый документ</a>
+    <h1>Мои документы СТО</h1>
+    <a href="{% url 'documents:sto_create' %}" class="btn btn-primary">Создать новый документ</a>
 </div>
 {% if sto_documents %}
   <ul class="list-group">
     {% for doc in sto_documents %}
       <li class="list-group-item d-flex justify-content-between align-items-center">
-        <a href="{% url 'documents:detail' doc.pk %}">{{ doc }}</a>
+        <a href="{% url 'documents:sto_detail' doc.pk %}">{{ doc }}</a>
         <div>
-          <a href="{% url 'documents:edit' doc.pk %}" class="btn btn-sm btn-outline-secondary me-2">Редактировать</a>
-          <a href="{% url 'documents:delete' doc.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+          <a href="{% url 'documents:sto_edit' doc.pk %}" class="btn btn-sm btn-outline-secondary me-2">Редактировать</a>
+          <a href="{% url 'documents:sto_delete' doc.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
         </div>
       </li>
     {% endfor %}
@@ -33,6 +34,6 @@
     </ul>
   </nav>
 {% else %}
-  <p>У вас пока нет документов. <a href="{% url 'sto_documents:create' %}">Создать первый</a>.</p>
+  <p>У вас пока нет документов. <a href="{% url 'documents:sto_create' %}">Создать первый</a>.</p>
 {% endif %}
 {% endblock %}

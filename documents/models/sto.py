@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 
 
-class Document(models.Model):
+class Document_sto(models.Model):
     """Общая «обёртка» для любого текстового документа по СТО 4.2–07–2008."""
     WORK_TYPES = [
         ('MAG_DIPLOMA', 'Магистерская диссертация'),
@@ -44,9 +44,9 @@ class Document(models.Model):
         return f"{self.get_work_type_display()} «{self.title}» — {self.student_name}"
 
 
-class Abstract(models.Model):
+class Abstract_sto(models.Model):
     """Реферат (аннотация) по разделу 6.3 СТО."""
-    document            = models.OneToOneField(Document, on_delete=models.CASCADE, related_name='abstract')
+    document            = models.OneToOneField(Document_sto, on_delete=models.CASCADE, related_name='abstract')
     page_count          = models.PositiveSmallIntegerField('Кол-во страниц')
     illustrations_count = models.PositiveSmallIntegerField('Кол-во иллюстраций')
     tables_count        = models.PositiveSmallIntegerField('Кол-во таблиц')
@@ -76,7 +76,7 @@ class Section(models.Model):
         # можно добавить подпункты, если нужно
     ]
 
-    document    = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='sections')
+    document    = models.ForeignKey(Document_sto, on_delete=models.CASCADE, related_name='sections')
     type        = models.CharField('Тип раздела', max_length=5, choices=SECTION_TYPES)
     order       = models.PositiveSmallIntegerField('Порядок')
     title       = models.CharField('Заголовок раздела', max_length=200)
@@ -93,7 +93,7 @@ class Section(models.Model):
 
 class BibliographyEntry(models.Model):
     """Элемент списка использованных источников (6.8)."""
-    document    = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='biblio')
+    document    = models.ForeignKey(Document_sto, on_delete=models.CASCADE, related_name='biblio')
     order       = models.PositiveSmallIntegerField('Порядок в списке')
     entry_text  = models.TextField('Оформление по ГОСТ 7.1–2003')
 
@@ -106,9 +106,9 @@ class BibliographyEntry(models.Model):
         return f"{self.order}. {self.entry_text[:50]}…"
 
 
-class Appendix(models.Model):
+class Appendix_sto(models.Model):
     """Приложения (6.9)."""
-    document    = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='appendices')
+    document    = models.ForeignKey(Document_sto, on_delete=models.CASCADE, related_name='appendices')
     label       = models.CharField('Буквенный индекс (Приложение А, Б, …)', max_length=2)
     title       = models.CharField('Название приложения', max_length=200, blank=True)
     content     = models.FileField('Файл приложения', upload_to='appendices/')  # или TextField для текста

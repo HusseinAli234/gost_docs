@@ -2,32 +2,30 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}ГОСТ Документы{% endblock %}</title>
+    <title>{% block title %}ГОСТ Docs{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     {% block extra_css %}{% endblock %}
-
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
   <div class="container">
-    <a class="navbar-brand" href="/">ГОСТ Docs</a>
-    <div class="collapse navbar-collapse">
+    <a class="navbar-brand" href="{% url 'documents:gost_list' %}">ГОСТ Docs</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
         {% if user.is_authenticated %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'documents:list' %}">Мои документы</a></li>
-          {# Перемещаем форму выхода сюда, когда пользователь аутентифицирован #}
+          <li class="nav-item"><a class="nav-link" href="{% url 'documents:gost_list' %}">Мои документы</a></li>
           <li class="nav-item">
-            <form action="{% url 'logout' %}" method="post" style="display: inline;">
+            <form action="{% url 'logout' %}" method="post" class="d-inline">
               {% csrf_token %}
-              <button type="submit" class="nav-link btn btn-link" style="padding: .5rem 1rem; text-decoration: none; color: rgba(0,0,0,.55);">
-                Выйти
-              </button>
+              <button type="submit" class="nav-link btn btn-link p-0" style="color: inherit;">Выйти</button>
             </form>
           </li>
         {% else %}
-          {# Оставляем ссылки для неаутентифицированных пользователей здесь #}
           <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Войти</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'register' %}">Регистрация</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'accounts:register' %}">Регистрация</a></li>
         {% endif %}
       </ul>
     </div>
@@ -35,12 +33,10 @@
 </nav>
 
 <div class="container">
-    {% block content %}
-    {% endblock %}
+    {% block content %}{% endblock %}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-{% block extra_js %}
-{% endblock %}
+{% block extra_js %}{% endblock %}
 </body>
 </html>
