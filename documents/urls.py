@@ -1,16 +1,20 @@
 from django.urls import path
-from .views import gost
 from documents.views import (
     DocumentListView, DocumentDetailView,
     DocumentCreateView, DocumentUpdateView, DocumentDeleteView
+)
+from documents.views.gost import (
+    DocumentListView, DocumentDetailView,
+    DocumentCreateView, DocumentUpdateView
 )
 
 app_name = 'documents'
 
 urlpatterns = [
-    path('', gost.document_list, name='document_list'),
-    path('new/', gost.document_create, name='document_create'),
-    path('edit/<int:pk>/', gost.document_edit, name='document_edit'),
+    path('', DocumentListView.as_view(), name='document_list'),
+    path('new/', DocumentCreateView.as_view(), name='document_create'),
+    path('edit/<int:pk>/', DocumentUpdateView.as_view(), name='document_edit'),
+    path('detail/<int:pk>/', DocumentDetailView.as_view(), name='document_detail'),
 
 
     
@@ -19,5 +23,4 @@ urlpatterns = [
     path('sto/create/', DocumentCreateView.as_view(), name='create'),
     path('sto/<int:pk>/edit/', DocumentUpdateView.as_view(), name='edit'),
     path('sto/<int:pk>/delete/', DocumentDeleteView.as_view(), name='delete'),
-
 ]
