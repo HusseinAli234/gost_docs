@@ -25,10 +25,14 @@ class TitlePageForm(forms.ModelForm):
     class Meta:
         model = TitlePage
         exclude = ['document']
+        widgets = {
+            'approval_date': forms.DateInput(attrs={'type': 'date'})
+        }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control'})      
+            if not isinstance(field.widget, forms.DateInput):
+                field.widget.attrs.update({'class': 'form-control'})      
 
 class AbstractForm(forms.ModelForm):
     class Meta:
@@ -45,10 +49,15 @@ class PerformerForm(forms.ModelForm):
     class Meta:
         model = Performer
         exclude = ['document']
+        widgets = {
+            'date_signed': forms.DateInput(attrs={'type': 'date'}),
+            'signed': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control'})  
+            if not isinstance(field.widget, (forms.CheckboxInput, forms.DateInput)):
+                field.widget.attrs.update({'class': 'form-control'})  
 class TermForm(forms.ModelForm):
     class Meta:
         model = Term
@@ -90,24 +99,3 @@ TermFormSet = inlineformset_factory(Document, Term, form=TermForm, extra=1, can_
 AbbreviationFormSet = inlineformset_factory(Document, Abbreviation, form=AbbreviationForm, extra=1, can_delete=True)
 ReferenceFormSet = inlineformset_factory(Document, Reference, form=ReferenceForm, extra=1, can_delete=True)
 AppendixFormSet = inlineformset_factory(Document, Appendix, form=AppendixForm, extra=1, can_delete=True)
-
-from django import forms
-from ..models.gost import Document
-from ckeditor.widgets import CKEditorWidget
-
-class DocumentForm(forms.ModelForm):
-    class Meta:
-        model = Document
-        fields = '__all__'
-        exclude = ['user', 'created_at']
-        widgets = {
-            'introduction': CKEditorWidget(),
-            'goal': CKEditorWidget(),
-            'tasks': CKEditorWidget(),
-            'main_part': CKEditorWidget(),
-            'conclusion': CKEditorWidget(),
-        }
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control'})    

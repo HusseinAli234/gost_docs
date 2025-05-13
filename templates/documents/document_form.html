@@ -14,7 +14,14 @@
                 <h3 class="card-title text-center mb-4">
                     {% if form.instance.pk %}Редактировать документ{% else %}Создать новый документ{% endif %}
                 </h3>
-                <form method="post">
+                
+                {% if error_message %}
+                <div class="alert alert-danger mb-4">
+                    {{ error_message }}
+                </div>
+                {% endif %}
+                
+                <form method="post" action="{% if form.instance.pk %}{% url 'document_edit' form.instance.pk %}{% else %}{% url 'document_create' %}{% endif %}">
                     {% csrf_token %}
 
                     {# Навигация по вкладкам #}
@@ -50,90 +57,243 @@
                         {# --- Вкладка: Основное --- #}
                         <div class="tab-pane fade show active" id="main-tab-pane" role="tabpanel" aria-labelledby="main-tab" tabindex="0">
                             <h5 class="visually-hidden">Основная информация</h5> {# Скрытый заголовок для доступности или можно убрать #}
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                             {{ form.as_p }}
                         </div>
 
                         {# --- Вкладка: Титульный лист --- #}
                         <div class="tab-pane fade" id="title-tab-pane" role="tabpanel" aria-labelledby="title-tab" tabindex="0">
                             <h5 class="mt-3">Титульный лист</h5>
-                            {{ title_form.as_p }}
+                            {% for field in title_form.visible_fields %}
+                                <div class="mb-3">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.errors %}
+                                        <div class="text-danger">{{ field.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                            {% for hidden in title_form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
                         </div>
 
                         {# --- Вкладка: Реферат --- #}
                         <div class="tab-pane fade" id="abstract-tab-pane" role="tabpanel" aria-labelledby="abstract-tab" tabindex="0">
                              <h5 class="mt-3">Реферат</h5>
-                            {{ abstract_form.as_p }} {# CKEditor будет здесь, если настроен для этого поля #}
+                            {% for field in abstract_form.visible_fields %}
+                                <div class="mb-3">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.errors %}
+                                        <div class="text-danger">{{ field.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                            {% for hidden in abstract_form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
                         </div>
 
                         {# --- Вкладка: Исполнители --- #}
                         <div class="tab-pane fade" id="performers-tab-pane" role="tabpanel" aria-labelledby="performers-tab" tabindex="0">
                              <h5 class="mt-3">Исполнители</h5>
                             {{ performer_formset.management_form }}
+                            <div id="performer-forms-container">
                             {% for performer_form in performer_formset %}
-                                <div class="formset-instance border rounded p-3 mb-3"> {# Небольшая обертка для каждого исполнителя #}
-                                    {{ performer_form.as_p }}
-                                    {% if performer_form.DELETE %} {# Показать чекбокс удаления, если есть #}
-                                    {% endif %}
+                                <div class="formset-instance border rounded p-3 mb-3">
+                                    {% for field in performer_form.visible_fields %}
+                                        <div class="mb-3">
+                                            {% if field.name == "DELETE" %}
+                                                <div class="form-check">
+                                                    {{ field }}
+                                                    <label class="form-check-label text-danger" for="{{ field.id_for_label }}">
+                                                        Удалить этого исполнителя
+                                                    </label>
+                                                </div>
+                                            {% elif field.name == "signed" %}
+                                                <div class="form-check">
+                                                    {{ field }}
+                                                    <label class="form-check-label" for="{{ field.id_for_label }}">
+                                                        {{ field.label }}
+                                                    </label>
+                                                </div>
+                                            {% elif field.name == "date_signed" %}
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                            {% else %}
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                            {% endif %}
+                                            {% if field.errors %}
+                                                <div class="text-danger">{{ field.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    {% for hidden in performer_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
                                 </div>
                                  {% if not forloop.last %}<hr>{% endif %}
                             {% endfor %}
-                            {# Здесь можно добавить кнопку "Добавить исполнителя", если формсет динамический #}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm mt-2" id="add-performer">
+                                <i class="bi bi-plus-circle"></i> Добавить исполнителя
+                            </button>
                         </div>
 
                         {# --- Вкладка: Термины --- #}
                         <div class="tab-pane fade" id="terms-tab-pane" role="tabpanel" aria-labelledby="terms-tab" tabindex="0">
                             <h5 class="mt-3">Термины</h5>
                             {{ term_formset.management_form }}
+                            <div id="term-forms-container">
                             {% for term_form in term_formset %}
                                 <div class="formset-instance border rounded p-3 mb-3">
-                                    {{ term_form.as_p }}
-                                     {% if term_form.DELETE %}
-                                    {% endif %}
+                                    {% for field in term_form.visible_fields %}
+                                        <div class="mb-3">
+                                            {% if field.name == "DELETE" %}
+                                                <div class="form-check">
+                                                    {{ field }}
+                                                    <label class="form-check-label text-danger" for="{{ field.id_for_label }}">
+                                                        Удалить этот термин
+                                                    </label>
+                                                </div>
+                                            {% else %}
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                            {% endif %}
+                                            {% if field.errors %}
+                                                <div class="text-danger">{{ field.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    {% for hidden in term_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
                                 </div>
                                 {% if not forloop.last %}<hr>{% endif %}
                             {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm mt-2" id="add-term">
+                                <i class="bi bi-plus-circle"></i> Добавить термин
+                            </button>
                         </div>
 
                         {# --- Вкладка: Сокращения --- #}
                         <div class="tab-pane fade" id="abbrevs-tab-pane" role="tabpanel" aria-labelledby="abbrevs-tab" tabindex="0">
                             <h5 class="mt-3">Сокращения</h5>
                              {{ abbrev_formset.management_form }}
+                            <div id="abbrev-forms-container">
                             {% for abbrev_form in abbrev_formset %}
                                 <div class="formset-instance border rounded p-3 mb-3">
-                                    {{ abbrev_form.as_p }}
-                                     {% if abbrev_form.DELETE %}
-                                    {% endif %}
+                                    {% for field in abbrev_form.visible_fields %}
+                                        <div class="mb-3">
+                                            {% if field.name == "DELETE" %}
+                                                <div class="form-check">
+                                                    {{ field }}
+                                                    <label class="form-check-label text-danger" for="{{ field.id_for_label }}">
+                                                        Удалить это сокращение
+                                                    </label>
+                                                </div>
+                                            {% else %}
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                            {% endif %}
+                                            {% if field.errors %}
+                                                <div class="text-danger">{{ field.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    {% for hidden in abbrev_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
                                 </div>
                                 {% if not forloop.last %}<hr>{% endif %}
                             {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm mt-2" id="add-abbrev">
+                                <i class="bi bi-plus-circle"></i> Добавить сокращение
+                            </button>
                         </div>
 
                         {# --- Вкладка: Источники --- #}
                         <div class="tab-pane fade" id="references-tab-pane" role="tabpanel" aria-labelledby="references-tab" tabindex="0">
                             <h5 class="mt-3">Источники</h5>
                             {{ reference_formset.management_form }}
+                            <div id="reference-forms-container">
                             {% for reference_form in reference_formset %}
                                 <div class="formset-instance border rounded p-3 mb-3">
-                                    {{ reference_form.as_p }}
-                                     {% if reference_form.DELETE %}
-                                    {% endif %}
+                                    {% for field in reference_form.visible_fields %}
+                                        <div class="mb-3">
+                                            {% if field.name == "DELETE" %}
+                                                <div class="form-check">
+                                                    {{ field }}
+                                                    <label class="form-check-label text-danger" for="{{ field.id_for_label }}">
+                                                        Удалить этот источник
+                                                    </label>
+                                                </div>
+                                            {% else %}
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                            {% endif %}
+                                            {% if field.errors %}
+                                                <div class="text-danger">{{ field.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    {% for hidden in reference_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
                                 </div>
                                 {% if not forloop.last %}<hr>{% endif %}
                             {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm mt-2" id="add-reference">
+                                <i class="bi bi-plus-circle"></i> Добавить источник
+                            </button>
                         </div>
 
                         {# --- Вкладка: Приложения --- #}
                         <div class="tab-pane fade" id="appendices-tab-pane" role="tabpanel" aria-labelledby="appendices-tab" tabindex="0">
                              <h5 class="mt-3">Приложения</h5>
                              {{ appendix_formset.management_form }}
+                            <div id="appendix-forms-container">
                             {% for appendix_form in appendix_formset %}
                                 <div class="formset-instance border rounded p-3 mb-3">
-                                    {{ appendix_form.as_p }}
-                                     {% if appendix_form.DELETE %}
-                                    {% endif %}
+                                    {% for field in appendix_form.visible_fields %}
+                                        <div class="mb-3">
+                                            {% if field.name == "DELETE" %}
+                                                <div class="form-check">
+                                                    {{ field }}
+                                                    <label class="form-check-label text-danger" for="{{ field.id_for_label }}">
+                                                        Удалить это приложение
+                                                    </label>
+                                                </div>
+                                            {% else %}
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                            {% endif %}
+                                            {% if field.errors %}
+                                                <div class="text-danger">{{ field.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    {% for hidden in appendix_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
                                 </div>
                                 {% if not forloop.last %}<hr>{% endif %}
                             {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm mt-2" id="add-appendix">
+                                <i class="bi bi-plus-circle"></i> Добавить приложение
+                            </button>
                         </div>
                     </div> {# Конец tab-content #}
 
@@ -161,22 +321,208 @@
 
     {# Если используете динамические формсеты, скрипты для них подключаются здесь #}
     <script>
-        // Небольшой скрипт для возможной инициализации чего-либо после переключения вкладок,
-        // например, если CKEditor не инициализируется на скрытых вкладках.
-        // var tabElms = document.querySelectorAll('button[data-bs-toggle="tab"]')
-        // tabElms.forEach(function (tabElm) {
-        //     tabElm.addEventListener('shown.bs.tab', function (event) {
-        //         // event.target // newly activated tab
-        //         // event.relatedTarget // previous active tab
-        //         // Можно добавить код для ре-инициализации виджетов на event.target, если нужно
-        //         console.log("Tab shown: " + event.target.id);
-        //         // Например, если CKEditor на вкладке Реферат:
-        //         if (event.target.id === 'abstract-tab') {
-        //            // Попробовать перерисовать CKEditor, если он плохо отображается
-        //            // Конкретный код зависит от вашей версии CKEditor и способа интеграции
-        //         }
-        //     })
-        // })
+        // Предотвращение отправки формы при нажатии на вкладки
+        document.addEventListener('DOMContentLoaded', function() {
+            var tabButtons = document.querySelectorAll('button[data-bs-toggle="tab"]');
+            tabButtons.forEach(function(button) {
+                button.addEventListener('click', function(event) {
+                    event.preventDefault();
+                });
+            });
+            
+            // Обработка переключения вкладок для корректной работы CKEditor
+            var tabElms = document.querySelectorAll('button[data-bs-toggle="tab"]');
+            tabElms.forEach(function (tabElm) {
+                tabElm.addEventListener('shown.bs.tab', function (event) {
+                    // Если на вкладке есть CKEditor, обновляем его при показе вкладки
+                    var tabPaneId = event.target.getAttribute('data-bs-target');
+                    var tabPane = document.querySelector(tabPaneId);
+                    
+                    if (tabPane) {
+                        // Найдем все возможные CKEditor экземпляры в этой вкладке
+                        var textareas = tabPane.querySelectorAll('textarea.django-ckeditor-widget');
+                        
+                        // Если есть CKEditor, обновляем его
+                        if (textareas.length > 0 && typeof CKEDITOR !== 'undefined') {
+                            textareas.forEach(function(textarea) {
+                                var editorId = textarea.id;
+                                if (CKEDITOR.instances[editorId]) {
+                                    CKEDITOR.instances[editorId].updateElement();
+                                    CKEDITOR.instances[editorId].resize('100%', '300');
+                                }
+                            });
+                        }
+                    }
+                });
+            });
+            
+            // Обработка полей с датами
+            var dateFields = document.querySelectorAll('input[type="date"]');
+            dateFields.forEach(function(field) {
+                // Добавляем класс для стилизации
+                field.setAttribute('class', field.getAttribute('class') + ' form-control datepicker');
+                
+                // Добавляем слушатель событий для корректной обработки ввода
+                field.addEventListener('change', function(e) {
+                    // Проверяем введенное значение на соответствие формату даты
+                    var dateValue = e.target.value;
+                    if (dateValue) {
+                        // Если дата введена, но не соответствует формату, сбрасываем поле
+                        if (!isValidDate(dateValue)) {
+                            console.warn("Некорректный формат даты:", dateValue);
+                            e.target.value = '';
+                        }
+                    }
+                });
+            });
+            
+            // Функция проверки корректности формата даты
+            function isValidDate(dateString) {
+                // Проверяем соответствие формату YYYY-MM-DD
+                var regex = /^\d{4}-\d{2}-\d{2}$/;
+                if (!regex.test(dateString)) return false;
+                
+                // Проверяем, что дата существует в календаре
+                var date = new Date(dateString);
+                if (isNaN(date.getTime())) return false;
+                
+                // Проверяем, что месяц и день совпадают с введенными
+                var parts = dateString.split('-');
+                var year = parseInt(parts[0], 10);
+                var month = parseInt(parts[1], 10) - 1; // getMonth() возвращает 0-11
+                var day = parseInt(parts[2], 10);
+                
+                return date.getFullYear() === year && 
+                       date.getMonth() === month && 
+                       date.getDate() === day;
+            }
+
+            // Обработка checkboxes
+            var checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(function(checkbox) {
+                if (checkbox.name.includes('signed') || checkbox.name.includes('DELETE')) {
+                    checkbox.setAttribute('class', 'form-check-input');
+                }
+            });
+            
+            // Обработка динамических формсетов - добавление новых элементов
+            function setupFormsetAddButtons() {
+                var formsetConfig = [
+                    {id: 'add-performer', prefix: 'performer', formsetPrefix: 'performers'},
+                    {id: 'add-term', prefix: 'term', formsetPrefix: 'terms'},
+                    {id: 'add-abbrev', prefix: 'abbrev', formsetPrefix: 'abbrevs'},
+                    {id: 'add-reference', prefix: 'reference', formsetPrefix: 'refs'},
+                    {id: 'add-appendix', prefix: 'appendix', formsetPrefix: 'apps'}
+                ];
+                
+                formsetConfig.forEach(function(config) {
+                    var button = document.getElementById(config.id);
+                    if (button) {
+                        button.addEventListener('click', function() {
+                            addFormsetForm(config.prefix, config.formsetPrefix);
+                        });
+                    }
+                });
+            }
+            
+            // Функция добавления новой формы в формсет
+            function addFormsetForm(prefix, formsetPrefix) {
+                // Получаем текущее количество форм
+                var totalFormsInput = document.getElementById('id_' + formsetPrefix + '-TOTAL_FORMS');
+                var formCount = parseInt(totalFormsInput.value);
+                
+                // Получаем контейнер для форм
+                var container = document.getElementById(prefix + '-forms-container');
+                if (!container) {
+                    console.error('Container not found:', prefix + '-forms-container');
+                    return;
+                }
+                
+                // Клонируем первую форму (можно также загружать шаблон с сервера)
+                var emptyForm = container.querySelector('.formset-instance');
+                if (!emptyForm) {
+                    console.error('No form template found in container:', prefix + '-forms-container');
+                    return;
+                }
+                
+                var newForm = emptyForm.cloneNode(true);
+                
+                // Обновляем ID и имена полей в новой форме
+                var inputs = newForm.querySelectorAll('input, select, textarea');
+                inputs.forEach(function(input) {
+                    if (input.name) {
+                        // Заменяем индекс в имени поля и ID
+                        var newName = input.name.replace(
+                            new RegExp(formsetPrefix + '-\\d+-'), 
+                            formsetPrefix + '-' + formCount + '-'
+                        );
+                        input.name = newName;
+                        
+                        if (input.id) {
+                            var newId = input.id.replace(
+                                new RegExp(formsetPrefix + '-\\d+-'), 
+                                formsetPrefix + '-' + formCount + '-'
+                            );
+                            input.id = newId;
+                        }
+                        
+                        // Очищаем значение поля
+                        if (input.type !== 'hidden' && input.type !== 'checkbox') {
+                            input.value = '';
+                        }
+                        if (input.type === 'checkbox') {
+                            input.checked = false;
+                        }
+                    }
+                });
+                
+                // Обновляем метки (labels) в новой форме
+                var labels = newForm.querySelectorAll('label');
+                labels.forEach(function(label) {
+                    var forAttr = label.getAttribute('for');
+                    if (forAttr) {
+                        var newFor = forAttr.replace(
+                            new RegExp(formsetPrefix + '-\\d+-'), 
+                            formsetPrefix + '-' + formCount + '-'
+                        );
+                        label.setAttribute('for', newFor);
+                    }
+                });
+                
+                // Добавляем новую форму в контейнер
+                container.appendChild(newForm);
+                
+                // Увеличиваем счетчик форм
+                totalFormsInput.value = formCount + 1;
+                
+                // Пересоздаём обработчики для полей типа date и checkbox в новой форме
+                initializeFormFields(newForm);
+            }
+            
+            function initializeFormFields(container) {
+                // Инициализация полей даты
+                var dateFields = container.querySelectorAll('input[type="date"]');
+                dateFields.forEach(function(field) {
+                    field.setAttribute('class', 'form-control datepicker');
+                    field.addEventListener('change', function(e) {
+                        if (e.target.value && !isValidDate(e.target.value)) {
+                            e.target.value = '';
+                        }
+                    });
+                });
+                
+                // Инициализация чекбоксов
+                var checkboxes = container.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(function(checkbox) {
+                    if (checkbox.name.includes('signed') || checkbox.name.includes('DELETE')) {
+                        checkbox.setAttribute('class', 'form-check-input');
+                    }
+                });
+            }
+            
+            // Инициализируем обработчики для кнопок добавления
+            setupFormsetAddButtons();
+        });
     </script>
 {% endblock %}
 
@@ -190,6 +536,38 @@
         /* Можно добавить отступы внутри tab-pane, если стандартных не хватает */
         .tab-pane {
             padding-top: 1rem; /* Добавить отступ сверху внутри вкладки */
+        }
+        /* Стили для полей ввода даты */
+        input[type="date"] {
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #495057;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        input[type="date"]:focus {
+            color: #495057;
+            background-color: #fff;
+            border-color: #80bdff;
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        /* Стили для чекбоксов */
+        .form-check {
+            padding-left: 1.5rem;
+        }
+        .form-check-input {
+            position: absolute;
+            margin-top: 0.3rem;
+            margin-left: -1.5rem;
+        }
+        .form-check-label {
+            margin-bottom: 0;
         }
     </style>
 {% endblock %}
