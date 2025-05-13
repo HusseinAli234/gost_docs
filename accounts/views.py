@@ -8,7 +8,8 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect('document_list')
+            # После регистрации перенаправляем на список ГОСТ-документов
+            return redirect('documents:gost_list')
     else:
         form = RegisterForm()
     return render(request, 'registration/register.html', {'form': form})

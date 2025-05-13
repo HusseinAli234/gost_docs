@@ -1,16 +1,31 @@
 from django.urls import path
-from documents.views import gost
-from documents.views.gost import (
-    DocumentListView, DocumentDetailView,
-    DocumentCreateView, DocumentUpdateView,
-    document_export_docx
+from .views.gost import (
+    DocumentListView as GostDocumentListView,
+    DocumentDetailView as GostDocumentDetailView,
+    DocumentCreateView as GostDocumentCreateView,
+    DocumentUpdateView as GostDocumentUpdateView,
+)
+from .views.sto import (
+    DocumentListView as StoDocumentListView,
+    DocumentDetailView as StoDocumentDetailView,
+    DocumentCreateView as StoDocumentCreateView,
+    DocumentUpdateView as StoDocumentUpdateView,
+    DocumentDeleteView as StoDocumentDeleteView,
 )
 
+app_name = 'documents'
+
 urlpatterns = [
-    path('', DocumentListView.as_view(), name='document_list'),
-    path('new/', DocumentCreateView.as_view(), name='document_create'),
-    path('edit/<int:pk>/', DocumentUpdateView.as_view(), name='document_edit'),
-    path('detail/<int:pk>/', DocumentDetailView.as_view(), name='document_detail'),
-    path('export/docx/<int:pk>/', document_export_docx, name='document_export_docx'),
-    # path('export/pdf/<int:pk>/', views.document_export_pdf, name='document_export_pdf'),
+    # ГОСТ 7.32
+    path('gost/', GostDocumentListView.as_view(), name='gost_list'),
+    path('gost/new/', GostDocumentCreateView.as_view(), name='gost_create'),
+    path('gost/<int:pk>/', GostDocumentDetailView.as_view(), name='gost_detail'),
+    path('gost/<int:pk>/edit/', GostDocumentUpdateView.as_view(), name='gost_edit'),
+
+    # СТО СФУ 4.2
+    path('sto/', StoDocumentListView.as_view(), name='sto_list'),
+    path('sto/create/', StoDocumentCreateView.as_view(), name='sto_create'),
+    path('sto/<int:pk>/', StoDocumentDetailView.as_view(), name='sto_detail'),
+    path('sto/<int:pk>/edit/', StoDocumentUpdateView.as_view(), name='sto_edit'),
+    path('sto/<int:pk>/delete/', StoDocumentDeleteView.as_view(), name='sto_delete'),
 ]
