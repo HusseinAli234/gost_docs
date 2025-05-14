@@ -40,7 +40,26 @@
         </div>
         <div class="card-body">
           <table class="table table-bordered">
-            <tr><th style="width:30%">Вид работы:</th><td>{{ sto.get_work_type_display }}</td></tr>
+            <!-- Новые поля -->
+            <tr>
+              <th style="width:30%">Университет:</th>
+              <td>{{ sto.university_name }}</td>
+            </tr>
+            <tr>
+              <th>Институт:</th>
+              <td>{{ sto.institute_name }}</td>
+            </tr>
+            <tr>
+              <th>Кафедра:</th>
+              <td>{{ sto.department_name }}</td>
+            </tr>
+            <tr>
+              <th>Название документа:</th>
+              <td>{{ sto.document_name }}</td>
+            </tr>
+
+            <!-- Существующие поля -->
+            <tr><th>Вид работы:</th><td>{{ sto.get_work_type_display }}</td></tr>
             <tr><th>Код специальности:</th><td>{{ sto.specialty_code }}</td></tr>
             <tr><th>Направление:</th><td>{{ sto.specialty_name }}</td></tr>
             <tr><th>Студент:</th><td>{{ sto.student_name }}</td></tr>

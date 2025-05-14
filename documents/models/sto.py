@@ -19,6 +19,12 @@ class Document_sto(models.Model):
     ]
 
     owner           = models.ForeignKey(User, on_delete=models.CASCADE, related_name='docs')
+
+    university_name = models.CharField('Наименование университета', max_length=255, null =True, blank=True)
+    institute_name = models.CharField('Полное наименование института', max_length=255, null =True, blank=True)
+    department_name = models.CharField('Полное наименование кафедры', max_length=255, null =True, blank=True)
+    document_name = models.CharField('Название документа', max_length=255, null =True, blank=True,)
+
     # --- титульный лист ---
     work_type       = models.CharField('Вид работы', max_length=20, choices=WORK_TYPES)
     specialty_code  = models.CharField('Код специальности', max_length=20, blank=True)
@@ -42,7 +48,7 @@ class Document_sto(models.Model):
         verbose_name_plural = 'Документы СТО'
 
     def __str__(self):
-        return f"{self.get_work_type_display()} «{self.title}» — {self.student_name}"
+        return f"{self.title} ({self.student_name}"
 
 
 class Abstract_sto(models.Model):
@@ -78,7 +84,7 @@ class Section(models.Model):
     ]
 
     document    = models.ForeignKey(Document_sto, on_delete=models.CASCADE, related_name='sections')
-    type        = models.CharField('Тип раздела', max_length=5, choices=SECTION_TYPES)
+    type        = models.CharField('Тип раздела', max_length=200)
     order       = models.PositiveSmallIntegerField('Порядок')
     title       = models.CharField('Заголовок раздела', max_length=200)
     content     = RichTextUploadingField('Содержимое (HTML или текст)')
@@ -89,7 +95,7 @@ class Section(models.Model):
         verbose_name_plural = 'Разделы СТО'
 
     def __str__(self):
-        return f"{self.get_type_display()} ({self.order}) — {self.document}"
+        return f"({self.order}) — {self.document}"
 
 
 class BibliographyEntry(models.Model):
