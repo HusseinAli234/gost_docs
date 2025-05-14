@@ -8,8 +8,8 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            # После регистрации перенаправляем на список ГОСТ-документов
-            return redirect('documents:gost_list')
+            # После регистрации перенаправляем на лендинг-страницу
+            return redirect('landing')
     else:
         form = RegisterForm()
     return render(request, 'registration/register.html', {'form': form})

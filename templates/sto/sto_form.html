@@ -12,7 +12,16 @@
           {% if form.instance.pk %}Редактирование документа{% else %}Создание документа{% endif %}
         </h3>
 
-        <form method="post" enctype="multipart/form-data">
+        {% if form.errors or abstract_form.errors or sections.errors or biblio.errors or appendices.errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <h4 class="alert-heading">Ошибки в форме!</h4>
+          <p>Пожалуйста, исправьте ошибки в отмеченных полях.</p>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" 
+              action="{% if form.instance.pk %}{% url 'documents:sto_edit' form.instance.pk %}{% else %}{% url 'documents:sto_create' %}{% endif %}">
           {% csrf_token %}
 
           <ul class="nav nav-tabs mb-3" id="stoTab" role="tablist">
@@ -25,19 +34,71 @@
 
           <div class="tab-content" id="stoTabContent">
             <div class="tab-pane fade show active" id="main">
-              {{ form.as_p }}
+              {% for field in form %}
+                <div class="mb-3 {% if field.errors %}is-invalid{% endif %}">
+                  {{ field.label_tag }}
+                  {{ field }}
+                  {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                  {% endif %}
+                  {% if field.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in field.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
             </div>
             <div class="tab-pane fade" id="abstract">
-              {{ abstract_form.as_p }}
+              {% for field in abstract_form %}
+                <div class="mb-3 {% if field.errors %}is-invalid{% endif %}">
+                  {{ field.label_tag }}
+                  {{ field }}
+                  {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                  {% endif %}
+                  {% if field.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in field.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
             </div>
 
             {# Разделы #}
             <div class="tab-pane fade" id="sections">
               {{ sections.management_form }}
+              {% if sections.non_form_errors %}
+                <div class="alert alert-danger mb-3">
+                  {% for error in sections.non_form_errors %}
+                    {{ error }}
+                  {% endfor %}
+                </div>
+              {% endif %}
               <div id="sections-container">
                 {% for fs in sections.forms %}
                   <div class="border rounded p-3 mb-3 formset-instance">
-                    {{ fs.as_p }}
+                    {% for field in fs %}
+                      <div class="mb-3 {% if field.errors %}is-invalid{% endif %}">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}
+                          <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                          <div class="invalid-feedback d-block">
+                            {% for error in field.errors %}
+                              {{ error }}
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
                     {% if fs.instance.pk %}
                       <div class="form-check">
                         {{ fs.DELETE }} <label class="form-check-label">Удалить</label>
@@ -59,10 +120,32 @@
             {# Литература #}
             <div class="tab-pane fade" id="biblio">
               {{ biblio.management_form }}
+              {% if biblio.non_form_errors %}
+                <div class="alert alert-danger mb-3">
+                  {% for error in biblio.non_form_errors %}
+                    {{ error }}
+                  {% endfor %}
+                </div>
+              {% endif %}
               <div id="biblio-container">
                 {% for fs in biblio.forms %}
                   <div class="border rounded p-3 mb-3 formset-instance">
-                    {{ fs.as_p }}
+                    {% for field in fs %}
+                      <div class="mb-3 {% if field.errors %}is-invalid{% endif %}">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}
+                          <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                          <div class="invalid-feedback d-block">
+                            {% for error in field.errors %}
+                              {{ error }}
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
                     {% if fs.instance.pk %}
                       <div class="form-check">
                         {{ fs.DELETE }} <label class="form-check-label">Удалить</label>
@@ -83,10 +166,32 @@
             {# Приложения #}
             <div class="tab-pane fade" id="apps">
               {{ appendices.management_form }}
+              {% if appendices.non_form_errors %}
+                <div class="alert alert-danger mb-3">
+                  {% for error in appendices.non_form_errors %}
+                    {{ error }}
+                  {% endfor %}
+                </div>
+              {% endif %}
               <div id="apps-container">
                 {% for fs in appendices.forms %}
                   <div class="border rounded p-3 mb-3 formset-instance">
-                    {{ fs.as_p }}
+                    {% for field in fs %}
+                      <div class="mb-3 {% if field.errors %}is-invalid{% endif %}">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}
+                          <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                          <div class="invalid-feedback d-block">
+                            {% for error in field.errors %}
+                              {{ error }}
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
                     {% if fs.instance.pk %}
                       <div class="form-check">
                         {{ fs.DELETE }} <label class="form-check-label">Удалить</label>
@@ -129,12 +234,59 @@
           const emptyHtml = document.getElementById(emptyFormId).innerHTML.replace(/__prefix__/g, count);
           document.getElementById(containerId).insertAdjacentHTML('beforeend', emptyHtml);
           total.value = count + 1;
+          
+          // Инициализация CKEditor для новых текстовых полей
+          initCKEditorForNewFields();
         });
       }
 
       setupAddBtn('add-section', 'sections-container', 'empty-section-form', '{{ sections.prefix }}');
       setupAddBtn('add-biblio',  'biblio-container',   'empty-biblio-form',  '{{ biblio.prefix }}');
       setupAddBtn('add-app',     'apps-container',     'empty-app-form',     '{{ appendices.prefix }}');
+      
+      // Проверка наличия ошибок в формах и активация соответствующей вкладки
+      const hasTabWithErrors = (tabId) => {
+        return document.querySelector(`#${tabId} .invalid-feedback, #${tabId} .alert-danger`);
+      };
+      
+      if (hasTabWithErrors('abstract')) {
+        document.getElementById('abstract-tab').click();
+      } else if (hasTabWithErrors('sections')) {
+        document.getElementById('sections-tab').click();
+      } else if (hasTabWithErrors('biblio')) {
+        document.getElementById('biblio-tab').click();
+      } else if (hasTabWithErrors('apps')) {
+        document.getElementById('apps-tab').click();
+      }
+      
+      // Добавление стилей для полей с ошибками
+      document.querySelectorAll('.is-invalid input, .is-invalid select, .is-invalid textarea').forEach(field => {
+        field.classList.add('is-invalid');
+      });
+      
+      // Функция для инициализации CKEditor в новых динамически добавленных полях
+      function initCKEditorForNewFields() {
+        // Поиск всех textarea с классами django-ckeditor-widget
+        const textareas = document.querySelectorAll('textarea.django-ckeditor-widget:not([id^="cke_"])');
+        
+        textareas.forEach(textarea => {
+          if (!textarea.getAttribute('data-processed')) {
+            // Проверяем, был ли уже инициализирован CKEditor для этого textarea
+            if (typeof CKEDITOR !== 'undefined' && !CKEDITOR.instances[textarea.id]) {
+              CKEDITOR.replace(textarea.id, {
+                toolbar: 'full',
+                language: 'ru',
+                width: '100%',
+                height: 300
+              });
+              textarea.setAttribute('data-processed', 'true');
+            }
+          }
+        });
+      }
+      
+      // Вызываем функцию инициализации CKEditor при загрузке страницы
+      setTimeout(initCKEditorForNewFields, 500);
     });
   </script>
 {% endblock %}
@@ -143,5 +295,16 @@
 <style>
   .formset-instance { background: #f8f9fa; }
   .tab-pane { padding-top: 1rem; }
+  
+  /* Стили для ошибок */
+  .is-invalid input, .is-invalid select, .is-invalid textarea {
+    border-color: #dc3545;
+  }
+  
+  .invalid-feedback {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
 </style>
 {% endblock %}

@@ -9,6 +9,9 @@
             <div class="d-flex gap-2 mb-3">
                 <a href="{% url 'documents:gost_edit' document.pk %}" class="btn btn-primary">Редактировать</a>
                 <a href="{% url 'documents:gost_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
+                <a href="{% url 'documents:gost_export_docx' document.pk %}" class="btn btn-success">
+                    <i class="bi bi-file-earmark-word"></i> Экспорт в DOCX
+                </a>
             </div>
         </div>
     </div>

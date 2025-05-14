@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
+from ckeditor_uploader.fields import RichTextUploadingField
 
 
 class Document_sto(models.Model):
@@ -25,7 +26,7 @@ class Document_sto(models.Model):
     title           = models.CharField('Тема работы', max_length=255)
     supervisor      = models.CharField('Руководитель (ФИО, ученая степень/звание)', max_length=200)
     student_name    = models.CharField('Исполнитель (ФИО)', max_length=200)
-    consultants     = models.TextField('Консультанты (ФИО, должность)', blank=True,
+    consultants     = RichTextUploadingField('Консультанты (ФИО, должность)', blank=True,
                                        help_text='По пункту 6.2.2: консультанты и нормоконтролёр')
     approval_note   = models.CharField('Гриф утверждения', max_length=200, blank=True,
                                        help_text='Заполняется для ВКР и отчётов')
@@ -56,7 +57,7 @@ class Abstract_sto(models.Model):
     graphic_sheets      = models.PositiveSmallIntegerField('Листов графического материала')
     keywords            = models.TextField('Ключевые слова',
                                           help_text='До 15 слов/словосочетаний, прописными, через запятую')
-    text                = models.TextField('Текст реферата')
+    text                = RichTextUploadingField('Текст реферата')
 
     def __str__(self):
         return f"Реферат к {self.document}"
@@ -80,7 +81,7 @@ class Section(models.Model):
     type        = models.CharField('Тип раздела', max_length=5, choices=SECTION_TYPES)
     order       = models.PositiveSmallIntegerField('Порядок')
     title       = models.CharField('Заголовок раздела', max_length=200)
-    content     = models.TextField('Содержимое (HTML или текст)')
+    content     = RichTextUploadingField('Содержимое (HTML или текст)')
 
     class Meta:
         ordering = ['order']
@@ -95,7 +96,7 @@ class BibliographyEntry(models.Model):
     """Элемент списка использованных источников (6.8)."""
     document    = models.ForeignKey(Document_sto, on_delete=models.CASCADE, related_name='biblio')
     order       = models.PositiveSmallIntegerField('Порядок в списке')
-    entry_text  = models.TextField('Оформление по ГОСТ 7.1–2003')
+    entry_text  = RichTextUploadingField('Оформление по ГОСТ 7.1–2003')
 
     class Meta:
         ordering = ['order']
@@ -111,7 +112,7 @@ class Appendix_sto(models.Model):
     document    = models.ForeignKey(Document_sto, on_delete=models.CASCADE, related_name='appendices')
     label       = models.CharField('Буквенный индекс (Приложение А, Б, …)', max_length=2)
     title       = models.CharField('Название приложения', max_length=200, blank=True)
-    content     = models.FileField('Файл приложения', upload_to='appendices/')  # или TextField для текста
+    content     = models.TextField('Файл приложения')  # или TextField для текста
 
     class Meta:
         ordering = ['label']
