@@ -26,6 +26,17 @@ SECRET_KEY = 'django-insecure-@z8iwcm)pigps09tf96es1i71@cnqxcs1&%xhzd*xe19ryz7r&
 DEBUG = True
 
 ALLOWED_HOSTS = []
+CKEDITOR_CONFIGS = {
+    'default': {
+        'language': 'ru',
+        'toolbar': 'Full',
+        'width': '100%',
+        'height': 300,
+        'extraPlugins': 'uploadimage',  
+        'filebrowserUploadUrl': '/ckeditor/upload/',
+        'filebrowserBrowseUrl': '/ckeditor/browse/',
+    },
+}
 
 
 # Application definition
@@ -106,7 +117,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-ru'
 
 TIME_ZONE = 'UTC'
 
