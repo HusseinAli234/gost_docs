@@ -11,8 +11,16 @@ from .views.sto import (
     DocumentCreateView as StoDocumentCreateView,
     DocumentUpdateView as StoDocumentUpdateView,
     DocumentDeleteView as StoDocumentDeleteView,
+    generate_title_page,
 )
 from .views.export import gost_export_docx, sto_export_docx
+from .views.main import (
+    DocumentListView as MainDocumentListView,
+    DocumentDetailView as MainDocumentDetailView,
+    DocumentCreateView as MainDocumentCreateView,
+    DocumentUpdateView as MainDocumentUpdateView,
+    DocumentDeleteView as MainDocumentDeleteView,
+)
 
 app_name = 'documents'
 
@@ -31,4 +39,13 @@ urlpatterns = [
     path('sto/<int:pk>/edit/', StoDocumentUpdateView.as_view(), name='sto_edit'),
     path('sto/<int:pk>/delete/', StoDocumentDeleteView.as_view(), name='sto_delete'),
     path('sto/<int:pk>/export/docx/', sto_export_docx, name='sto_export_docx'),
+    path('sto/<int:pk>/download_title_page/', generate_title_page, name='generate_title_page'),
+
+
+    path('main/', MainDocumentListView.as_view(), name='main_list'),
+    path('main/create/', MainDocumentCreateView.as_view(), name='main_create'),
+    path('main/<int:pk>/', MainDocumentDetailView.as_view(), name='main_detail'),
+    path('main/<int:pk>/edit/', MainDocumentUpdateView.as_view(), name='main_edit'),
+    path('main/<int:pk>/delete/', MainDocumentDeleteView.as_view(), name='main_delete'),
 ]
+

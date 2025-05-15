@@ -11,6 +11,7 @@
       <h1>{{ sto.title }}</h1>
       <div class="d-flex gap-2 mb-3">
         <a href="{% url 'documents:sto_edit' sto.pk %}" class="btn btn-primary">Редактировать</a>
+        <a href="{% url 'documents:generate_title_page' sto.pk %}" class="btn btn-outline-secondary">Скачать docx</a>
         <a href="{% url 'documents:sto_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
         <a href="{% url 'documents:sto_export_docx' sto.pk %}" class="btn btn-success">
           <i class="bi bi-file-earmark-word"></i> Экспорт в DOCX

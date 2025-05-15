@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ main.title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto py-8">
+  <h1 class="text-3xl font-bold mb-4">{{ main.title }}</h1>
+  <p class="text-sm text-gray-600 mb-6">Исполнитель: {{ main.student_name }}</p>
+  <h4 class="text-lg font-semibold mb-4">Стандарт: {{ main.standart }}</h4>
+
+  
+
+  <div class="bg-white shadow rounded-lg p-6 space-y-4">
+    <h2 class="text-xl font-semibold">Информация об учебном заведении</h2>
+    <ul class="list-disc list-inside">
+      {% if main.university_name %}<li><strong>Университет:</strong> {{ main.university_name }}</li>{% endif %}
+      {% if main.institute_name %}<li><strong>Институт:</strong> {{ main.institute_name }}</li>{% endif %}
+      {% if main.department_name %}<li><strong>Кафедра:</strong> {{ main.department_name }}</li>{% endif %}
+      {% if main.city %}<li><strong>Город выполнения:</strong> {{ main.city }}</li>{% endif %}
+      <li><strong>Год выполнения:</strong> {{ main.year }}</li>
+    </ul>
+
+    <h2 class="text-xl font-semibold mt-6">Данные по работе</h2>
+    <ul class="list-disc list-inside">
+      <li><strong>Вид работы:</strong> {{ main.get_work_type_display }}</li>
+      {% if main.specialty_code %}<li><strong>Код специальности:</strong> {{ main.specialty_code }}</li>{% endif %}
+      {% if main.specialty_name %}<li><strong>Специальность:</strong> {{ main.specialty_name }}</li>{% endif %}
+      {% if main.document_name %}<li><strong>Название документа:</strong> {{ main.document_name }}</li>{% endif %}
+      {% if main.approval_note %}<li><strong>Гриф утверждения:</strong> {{ main.approval_note }}</li>{% endif %}
+    </ul>
+
+    <h2 class="text-xl font-semibold mt-6">Руководство и консультанты</h2>
+    <ul class="list-disc list-inside">
+      <li><strong>Руководитель:</strong> {{ main.supervisor }}</li>
+      {% if main.consultants %}
+        <li><strong>Консультанты и нормоконтролёр:</strong></li>
+        {% autoescape off %}
+        <div class="prose max-w-none mt-2">
+          {{ main.consultants }}
+        </div>
+        {% endautoescape %}
+      {% endif %}
+    </ul>
+
+    {% if main.data %}
+      <h2 class="text-xl font-semibold mt-6">Содержание документа</h2>
+      {% autoescape off %}
+      <div class="prose max-w-none mt-2">
+        {{ main.data }}
+      </div>
+      {% endautoescape %}
+    {% endif %}
+
+    <div class="text-sm text-gray-500 mt-6">
+      Создано: {{ main.created_at|date:"d.m.Y H:i" }}<br>
+      Обновлено: {{ main.updated_at|date:"d.m.Y H:i" }}
+    </div>
+  </div>
+
+  <div class="mt-8 flex space-x-3">
+    <a href="{% url 'documents:main_list' %}" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">← К списку документов</a>
+    {% if request.user == main.owner %}
+      <a href="{% url 'documents:main_edit' main.pk %}" class="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded">Редактировать</a>
+      <a href="{% url 'documents:main_delete' main.pk %}" class="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded">Удалить</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

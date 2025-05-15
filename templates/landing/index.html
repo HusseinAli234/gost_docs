@@ -14,12 +14,9 @@
         border-radius: 0 0 1.5rem 1.5rem;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     }
-    
-    /* Стили для карточек документов */
     .cards-container {
         margin-top: -3.5rem;
     }
-    
     .card-document {
         transition: all 0.4s ease;
         height: 100%;
@@ -27,26 +24,22 @@
         border-radius: 1rem;
         overflow: hidden;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        opacity: 0;
     }
-    
     .card-document:hover {
         transform: translateY(-10px);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
     }
-    
     .card-header {
         background: none;
         border: none;
         padding: 1.5rem 1.5rem 0;
     }
-    
     .card-body {
         padding: 1.5rem;
         display: flex;
         flex-direction: column;
     }
-    
-    /* Иконки документов */
     .document-icon {
         width: 80px;
         height: 80px;
@@ -58,31 +51,28 @@
         margin-bottom: 1.5rem;
         color: white;
     }
-    
     .document-icon.gost {
         background: linear-gradient(135deg, #0d6efd, #0091ff);
         box-shadow: 0 10px 20px rgba(13, 110, 253, 0.2);
     }
-    
     .document-icon.sto {
         background: linear-gradient(135deg, #198754, #20c997);
         box-shadow: 0 10px 20px rgba(25, 135, 84, 0.2);
     }
-    
-    /* Заголовки и описания */
+    .document-icon.main {
+        background: linear-gradient(135deg, #6f42c1, #7952b3);
+        box-shadow: 0 10px 20px rgba(111, 66, 193, 0.2);
+    }
     .document-title {
         font-weight: 700;
         margin-bottom: 1rem;
         font-size: 1.75rem;
     }
-    
     .document-description {
         flex-grow: 1;
         margin-bottom: 1.5rem;
         color: #6c757d;
     }
-    
-    /* Кнопки */
     .btn-document {
         padding: 0.8rem 1.5rem;
         font-weight: 600;
@@ -93,22 +83,22 @@
         letter-spacing: 0.5px;
         font-size: 0.9rem;
     }
-    
     .btn-document:hover {
         transform: translateY(-3px);
     }
-    
     .btn-gost {
         background: linear-gradient(135deg, #0d6efd, #0091ff);
         border: none;
     }
-    
     .btn-sto {
         background: linear-gradient(135deg, #198754, #20c997);
         border: none;
     }
-    
-    /* Анимация и подсказки */
+    .btn-main {
+        background: linear-gradient(135deg, #6f42c1, #7952b3);
+        border: none;
+        color: white;
+    }
     .feature-badge {
         position: absolute;
         top: 1rem;
@@ -121,8 +111,6 @@
         font-weight: 600;
         box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
     }
-    
-    /* Информационная секция */
     .info-section {
         margin-top: 4rem;
         padding: 2rem;
@@ -130,23 +118,19 @@
         background: #f8f9fa;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
     }
-    
     .table-comparison {
         border-radius: 0.5rem;
         overflow: hidden;
     }
-    
     .table-comparison th {
         background-color: #e9ecef;
         font-weight: 600;
     }
-    
     .compare-header {
         position: relative;
         display: inline-block;
         margin-bottom: 1.5rem;
     }
-    
     .compare-header:after {
         content: '';
         position: absolute;
@@ -157,18 +141,14 @@
         background: linear-gradient(135deg, #0d6efd, #0091ff);
         border-radius: 3px;
     }
-    
-    /* Адаптивные стили */
     @media (max-width: 767px) {
         .hero-section {
             padding: 3rem 0;
             margin-bottom: 2rem;
         }
-        
         .document-title {
             font-size: 1.5rem;
         }
-        
         .cards-container {
             margin-top: -1.5rem;
         }
@@ -177,7 +157,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- Главная секция -->
 <div class="hero-section text-center">
     <div class="container">
         <div class="row justify-content-center">
@@ -189,11 +168,9 @@
     </div>
 </div>
 
-<!-- Секция с карточками -->
 <div class="container cards-container">
     <div class="row g-4 justify-content-center">
-        <!-- Карточка ГОСТ -->
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card card-document h-100 position-relative">
                 <span class="feature-badge">Популярный</span>
                 <div class="card-header text-start">
@@ -221,9 +198,7 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Карточка СТО -->
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card card-document h-100 position-relative">
                 <div class="card-header text-start">
                     <div class="document-icon sto">
@@ -233,7 +208,7 @@
                 </div>
                 <div class="card-body">
                     <div class="document-description">
-                        <p>Стандарт организации Сибирского федерального университета для оформления учебных и научных работ.</p>
+                        <p>Стандарт организации Сибирского районного университета для оформления учебных и научных работ.</p>
                         <p>Оптимален для курсовых, дипломных работ и диссертаций в СФУ.</p>
                     </div>
                     <div class="d-flex align-items-center mt-auto">
@@ -250,52 +225,48 @@
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Информационная секция -->
-    <div class="info-section mt-5">
-        <div class="row">
-            <div class="col-12">
-                <h4 class="compare-header">Сравнение стандартов</h4>
-                <div class="table-responsive">
-                    <table class="table table-comparison table-hover">
-                        <thead>
-                            <tr>
-                                <th scope="col">Характеристика</th>
-                                <th scope="col" class="text-primary">ГОСТ 7.32-2017</th>
-                                <th scope="col" class="text-success">СТО СФУ 4.2</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>Применение</strong></td>
-                                <td>Все организации в России</td>
-                                <td>Сибирский федеральный университет</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Структура документа</strong></td>
-                                <td>Стандартная научно-техническая</td>
-                                <td>Адаптирована под требования СФУ</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Оформление текста</strong></td>
-                                <td>По ГОСТ</td>
-                                <td>По стандартам СФУ</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Библиография</strong></td>
-                                <td>ГОСТ Р 7.0.5-2008</td>
-                                <td>Адаптирована для СФУ</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Сложность</strong></td>
-                                <td>Стандартная</td>
-                                <td>Упрощенная</td>
-                            </tr>
-                        </tbody>
-                    </table>
+        <div class="col-md-4">
+            <div class="card card-document h-100 position-relative">
+                <div class="card-header text-start">
+                    <div class="document-icon main">
+                        <i class="bi bi-folder-fill"></i>
+                    </div>
+                    <h3 class="document-title">Основной документ</h3>
+                </div>
+                <div class="card-body">
+                    <div class="document-description">
+                        <p>Создайте и управляйте вашими основными документами (дипломы, курсовые, отчёты и др.).</p>
+                    </div>
+                    <div class="d-flex align-items-center mt-auto">
+                        <i class="bi bi-check-circle-fill text-secondary me-2"></i>
+                        <span class="small text-muted">Поддерживает все виды работ</span>
+                    </div>
+                    <a href="{% url 'documents:main_list' %}" class="btn btn-document btn-main w-100">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Перейти
+                    </a>
                 </div>
             </div>
+        </div>
+    </div>
+    <div class="info-section mt-5">
+        <h4 class="compare-header">Сравнение стандартов</h4>
+        <div class="table-responsive">
+            <table class="table table-comparison table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">Характеристика</th>
+                        <th scope="col" class="text-primary">ГОСТ 7.32-2017</th>
+                        <th scope="col" class="text-success">СТО СФУ 4.2</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>Применение</strong></td><td>Все организации в России</td><td>Сибирский федеральный университет</td></tr>
+                    <tr><td><strong>Структура документа</strong></td><td>Стандартная научно-техническая</td><td>Адаптирована под требования СФУ</td></tr>
+                    <tr><td><strong>Оформление текста</strong></td><td>По ГОСТ</td><td>По стандартам СФУ</td></tr>
+                    <tr><td><strong>Библиография</strong></td><td>ГОСТ Р 7.0.5-2008</td><td>Адаптирована для СФУ</td></tr>
+                    <tr><td><strong>Сложность</strong></td><td>Стандартная</td><td>Упрощенная</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -303,7 +274,6 @@
 
 {% block extra_js %}
 <script>
-    // Анимация появления элементов при загрузке страницы
     document.addEventListener('DOMContentLoaded', function() {
         const cards = document.querySelectorAll('.card-document');
         setTimeout(() => {
@@ -315,4 +285,4 @@
         }, 300);
     });
 </script>
-{% endblock %} 
+{% endblock %}

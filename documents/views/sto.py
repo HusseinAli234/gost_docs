@@ -4,6 +4,47 @@ from django.shortcuts import redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from documents.models import Document_sto
 from documents.forms import DocumentForm, AbstractForm, SectionFormSet, BibliographyFormSet, AppendixFormSet
+from django.http import Http404
+from django.http import HttpResponse
+from docxtpl import DocxTemplate
+import os
+from io import BytesIO
+
+
+def generate_title_page(request, pk):
+    from documents.models import Document_sto
+
+    try:
+        doc = Document_sto.objects.get(pk=pk, owner=request.user)
+    except Document_sto.DoesNotExist:
+        raise Http404("Документ не найден.")
+
+    # Путь к шаблону
+    template_path = os.path.join('templates', 'docx', 'diplo_project.docx')
+    tpl = DocxTemplate(template_path)
+
+    context = {
+        "institute_name": doc.institute_name or "________",
+        "department_name": doc.department_name or "________",
+        "specialty_code_and_name": f"{doc.specialty_code or '___'} {doc.specialty_name or '_________'}",
+        "title": doc.title,
+        "supervisor": doc.supervisor,
+        "student_name": doc.student_name,
+        "year": doc.year,
+    }
+
+    tpl.render(context)
+
+    buffer = BytesIO()
+    tpl.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename="Титульный_лист_{doc.student_name}.docx"'
+    return response
 
 
 class DocumentListView(LoginRequiredMixin, ListView):

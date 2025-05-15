@@ -18,7 +18,7 @@ class Document_sto(models.Model):
         ('REF',        'Реферат'),
     ]
 
-    owner           = models.ForeignKey(User, on_delete=models.CASCADE, related_name='docs')
+    #owner           = models.ForeignKey(User, on_delete=models.CASCADE, related_name='docs')
 
     university_name = models.CharField('Наименование университета', max_length=255, null =True, blank=True)
     institute_name = models.CharField('Полное наименование института', max_length=255, null =True, blank=True)
@@ -36,7 +36,7 @@ class Document_sto(models.Model):
                                        help_text='По пункту 6.2.2: консультанты и нормоконтролёр')
     approval_note   = models.CharField('Гриф утверждения', max_length=200, blank=True,
                                        help_text='Заполняется для ВКР и отчётов')
-    city            = models.CharField('Город выполнения', max_length=100, default='Бишкек')
+    city            = models.CharField('Город выполнения', max_length=100, default='Москва')
     year            = models.PositiveSmallIntegerField('Год выполнения', default=2025)
 
     created_at      = models.DateTimeField(auto_now_add=True)

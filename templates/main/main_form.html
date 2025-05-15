@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load static %}  {# обязательно загрузка static для ckeditor файлов #}
+{% block title %}{{ view.object.pk|yesno:"Редактировать документ,Создать документ" }} | Мои документы{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>{{ view.object.pk|yesno:"Редактировать документ,Создать новый документ" }}</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.media }}  {# Важно: вставляет js и css от ckeditor #}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Сохранить</button>
+    <a href="{% url 'documents:main_list' %}" class="btn btn-secondary">Отмена</a>
+  </form>
+</div>
+{% endblock %}
