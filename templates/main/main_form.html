@@ -2,15 +2,414 @@
 {% load static %}  {# обязательно загрузка static для ckeditor файлов #}
 {% block title %}{{ view.object.pk|yesno:"Редактировать документ,Создать документ" }} | Мои документы{% endblock %}
 
+{% block extra_css %}
+<style>
+  .form-section {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+  }
+  
+  .form-section:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .section-title {
+    color: #0056b3;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+  }
+  
+  .form-label {
+    font-weight: 500;
+    color: #495057;
+  }
+  
+  .form-control {
+    border-radius: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid #ced4da;
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+  
+  .form-select {
+    border-radius: 0.5rem;
+    height: calc(2.5rem + 2px);
+  }
+  
+  .btn-primary {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    background-color: #004494;
+    border-color: #004494;
+    transform: translateY(-1px);
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.2);
+  }
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #5a6268;
+  }
+  
+  .form-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+  }
+  
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  
+  .cke_chrome {
+    border-radius: 0.5rem !important;
+    border-color: #ced4da !important;
+  }
+  
+  .action-buttons {
+    margin-top: 2rem;
+  }
+  
+  .nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+    margin-bottom: 1.5rem;
+  }
+  
+  .nav-tabs .nav-link {
+    margin-bottom: -2px;
+    border: none;
+    color: #6c757d;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+  }
+  
+  .nav-tabs .nav-link.active {
+    color: #0056b3;
+    border-bottom: 2px solid #0056b3;
+    background-color: transparent;
+  }
+  
+  .nav-tabs .nav-link:hover:not(.active) {
+    color: #495057;
+    border-color: transparent;
+  }
+  
+  .tab-content {
+    padding-top: 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    .form-section {
+      padding: 1rem;
+    }
+    
+    .section-title {
+      font-size: 1.25rem;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-  <h2>{{ view.object.pk|yesno:"Редактировать документ,Создать новый документ" }}</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.media }}  {# Важно: вставляет js и css от ckeditor #}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Сохранить</button>
-    <a href="{% url 'documents:main_list' %}" class="btn btn-secondary">Отмена</a>
-  </form>
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="form-section">
+        <h2 class="section-title text-center">{{ view.object.pk|yesno:"Редактирование документа,Создание нового документа" }}</h2>
+        
+        <form method="post" class="needs-validation" novalidate>
+          {% csrf_token %}
+          {{ form.media }}  {# Важно: вставляет js и css от ckeditor #}
+          
+          <ul class="nav nav-tabs" id="documentTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="true">
+                <i class="bi bi-info-circle"></i> Основная информация
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab" aria-controls="details" aria-selected="false">
+                <i class="bi bi-card-list"></i> Детали документа
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab" aria-controls="content" aria-selected="false">
+                <i class="bi bi-file-text"></i> Содержимое
+              </button>
+            </li>
+          </ul>
+          
+          <div class="tab-content" id="documentTabsContent">
+            <!-- Вкладка с основной информацией -->
+            <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+              <div class="row g-3">
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.standart.id_for_label }}" class="form-label">{{ form.standart.label }}</label>
+                  {{ form.standart }}
+                  {% if form.standart.help_text %}
+                    <div class="form-text">{{ form.standart.help_text }}</div>
+                  {% endif %}
+                  {% if form.standart.errors %}
+                    <div class="invalid-feedback d-block">{{ form.standart.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.work_type.id_for_label }}" class="form-label">{{ form.work_type.label }}</label>
+                  {{ form.work_type }}
+                  {% if form.work_type.help_text %}
+                    <div class="form-text">{{ form.work_type.help_text }}</div>
+                  {% endif %}
+                  {% if form.work_type.errors %}
+                    <div class="invalid-feedback d-block">{{ form.work_type.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-12 form-field">
+                  <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
+                  {{ form.title }}
+                  {% if form.title.help_text %}
+                    <div class="form-text">{{ form.title.help_text }}</div>
+                  {% endif %}
+                  {% if form.title.errors %}
+                    <div class="invalid-feedback d-block">{{ form.title.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.student_name.id_for_label }}" class="form-label">{{ form.student_name.label }}</label>
+                  {{ form.student_name }}
+                  {% if form.student_name.help_text %}
+                    <div class="form-text">{{ form.student_name.help_text }}</div>
+                  {% endif %}
+                  {% if form.student_name.errors %}
+                    <div class="invalid-feedback d-block">{{ form.student_name.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.supervisor.id_for_label }}" class="form-label">{{ form.supervisor.label }}</label>
+                  {{ form.supervisor }}
+                  {% if form.supervisor.help_text %}
+                    <div class="form-text">{{ form.supervisor.help_text }}</div>
+                  {% endif %}
+                  {% if form.supervisor.errors %}
+                    <div class="invalid-feedback d-block">{{ form.supervisor.errors }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Вкладка с деталями документа -->
+            <div class="tab-pane fade" id="details" role="tabpanel" aria-labelledby="details-tab">
+              <div class="row g-3">
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.university_name.id_for_label }}" class="form-label">{{ form.university_name.label }}</label>
+                  {{ form.university_name }}
+                  {% if form.university_name.help_text %}
+                    <div class="form-text">{{ form.university_name.help_text }}</div>
+                  {% endif %}
+                  {% if form.university_name.errors %}
+                    <div class="invalid-feedback d-block">{{ form.university_name.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.institute_name.id_for_label }}" class="form-label">{{ form.institute_name.label }}</label>
+                  {{ form.institute_name }}
+                  {% if form.institute_name.help_text %}
+                    <div class="form-text">{{ form.institute_name.help_text }}</div>
+                  {% endif %}
+                  {% if form.institute_name.errors %}
+                    <div class="invalid-feedback d-block">{{ form.institute_name.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.department_name.id_for_label }}" class="form-label">{{ form.department_name.label }}</label>
+                  {{ form.department_name }}
+                  {% if form.department_name.help_text %}
+                    <div class="form-text">{{ form.department_name.help_text }}</div>
+                  {% endif %}
+                  {% if form.department_name.errors %}
+                    <div class="invalid-feedback d-block">{{ form.department_name.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.document_name.id_for_label }}" class="form-label">{{ form.document_name.label }}</label>
+                  {{ form.document_name }}
+                  {% if form.document_name.help_text %}
+                    <div class="form-text">{{ form.document_name.help_text }}</div>
+                  {% endif %}
+                  {% if form.document_name.errors %}
+                    <div class="invalid-feedback d-block">{{ form.document_name.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.specialty_code.id_for_label }}" class="form-label">{{ form.specialty_code.label }}</label>
+                  {{ form.specialty_code }}
+                  {% if form.specialty_code.help_text %}
+                    <div class="form-text">{{ form.specialty_code.help_text }}</div>
+                  {% endif %}
+                  {% if form.specialty_code.errors %}
+                    <div class="invalid-feedback d-block">{{ form.specialty_code.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.specialty_name.id_for_label }}" class="form-label">{{ form.specialty_name.label }}</label>
+                  {{ form.specialty_name }}
+                  {% if form.specialty_name.help_text %}
+                    <div class="form-text">{{ form.specialty_name.help_text }}</div>
+                  {% endif %}
+                  {% if form.specialty_name.errors %}
+                    <div class="invalid-feedback d-block">{{ form.specialty_name.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-12 form-field">
+                  <label for="{{ form.consultants.id_for_label }}" class="form-label">{{ form.consultants.label }}</label>
+                  {{ form.consultants }}
+                  {% if form.consultants.help_text %}
+                    <div class="form-text">{{ form.consultants.help_text }}</div>
+                  {% endif %}
+                  {% if form.consultants.errors %}
+                    <div class="invalid-feedback d-block">{{ form.consultants.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.approval_note.id_for_label }}" class="form-label">{{ form.approval_note.label }}</label>
+                  {{ form.approval_note }}
+                  {% if form.approval_note.help_text %}
+                    <div class="form-text">{{ form.approval_note.help_text }}</div>
+                  {% endif %}
+                  {% if form.approval_note.errors %}
+                    <div class="invalid-feedback d-block">{{ form.approval_note.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-3 form-field">
+                  <label for="{{ form.city.id_for_label }}" class="form-label">{{ form.city.label }}</label>
+                  {{ form.city }}
+                  {% if form.city.help_text %}
+                    <div class="form-text">{{ form.city.help_text }}</div>
+                  {% endif %}
+                  {% if form.city.errors %}
+                    <div class="invalid-feedback d-block">{{ form.city.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-3 form-field">
+                  <label for="{{ form.year.id_for_label }}" class="form-label">{{ form.year.label }}</label>
+                  {{ form.year }}
+                  {% if form.year.help_text %}
+                    <div class="form-text">{{ form.year.help_text }}</div>
+                  {% endif %}
+                  {% if form.year.errors %}
+                    <div class="invalid-feedback d-block">{{ form.year.errors }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Вкладка с содержимым документа -->
+            <div class="tab-pane fade" id="content" role="tabpanel" aria-labelledby="content-tab">
+              <div class="form-field">
+                <label for="{{ form.data.id_for_label }}" class="form-label">{{ form.data.label }}</label>
+                {{ form.data }}
+                {% if form.data.help_text %}
+                  <div class="form-text">{{ form.data.help_text }}</div>
+                {% endif %}
+                {% if form.data.errors %}
+                  <div class="invalid-feedback d-block">{{ form.data.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          
+          <div class="action-buttons d-flex justify-content-between">
+            <a href="{% url 'documents:main_list' %}" class="btn btn-secondary">
+              <i class="bi bi-arrow-left"></i> Отмена
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save"></i> Сохранить документ
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Активация валидации форм Bootstrap
+  (() => {
+    'use strict'
+    
+    // Получаем все формы, к которым хотим применить пользовательские стили валидации Bootstrap
+    const forms = document.querySelectorAll('.needs-validation')
+    
+    // Обходим их и предотвращаем отправку
+    Array.from(forms).forEach(form => {
+      form.addEventListener('submit', event => {
+        if (!form.checkValidity()) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+        
+        form.classList.add('was-validated')
+      }, false)
+    })
+    
+    // Запоминаем активную вкладку в localStorage
+    const triggerTabList = document.querySelectorAll('#documentTabs button')
+    triggerTabList.forEach(triggerEl => {
+      triggerEl.addEventListener('click', function(event) {
+        localStorage.setItem('activeDocTab', this.id)
+      })
+    })
+    
+    // Восстанавливаем активную вкладку при загрузке страницы
+    const activeTabId = localStorage.getItem('activeDocTab')
+    if (activeTabId) {
+      const activeTab = document.querySelector(`#${activeTabId}`)
+      if (activeTab) {
+        const tab = new bootstrap.Tab(activeTab)
+        tab.show()
+      }
+    }
+  })()
+</script>
 {% endblock %}
