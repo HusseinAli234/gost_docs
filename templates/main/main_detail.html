@@ -277,7 +277,7 @@
             <div class="info-label">Год выполнения:</div>
             <div class="info-value">{{ main.year }}</div>
           </li>
-        </ul>
+    </ul>
       </div>
 
       <!-- Информация о работе -->
@@ -332,7 +332,7 @@
             <div class="info-value">{{ main.approval_note }}</div>
           </li>
           {% endif %}
-        </ul>
+    </ul>
       </div>
 
       <!-- Руководство и консультанты -->
@@ -374,7 +374,7 @@
           </li>
           {% endif %}
           
-          {% if main.consultants %}
+      {% if main.consultants %}
           <li>
             <div class="info-label">Консультанты:</div>
             <div class="info-value">
@@ -483,7 +483,7 @@
               <label for="references_doi" class="form-label">DOI источников (через запятую)</label>
               <textarea class="form-control" id="references_doi" name="references_doi" rows="3" placeholder="Например: 10.1000/xyz123, 10.1000/abc456">{{ main.references_doi }}</textarea>
               <div class="form-text">Введите DOI источников через запятую. При экспорте документа они будут автоматически преобразованы в библиографические ссылки по ГОСТ 7.1-2003.</div>
-            </div>
+      </div>
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-save"></i> Сохранить источники
             </button>
@@ -505,17 +505,17 @@
               {% endwith %}
             {% endfor %}
           </ul>
-          {% endif %}
-        </div>
-      </div>
-      
+    {% endif %}
+    </div>
+  </div>
+
       <!-- Кнопки действий -->
       <div class="d-flex flex-wrap gap-2 action-buttons">
         <a href="{% url 'documents:main_list' %}" class="action-btn btn-back">
           <i class="bi bi-arrow-left"></i> К списку документов
         </a>
         
-        {% if request.user == main.owner %}
+    {% if request.user == main.owner %}
         <a href="{% url 'documents:main_edit' main.pk %}" class="action-btn btn-edit">
           <i class="bi bi-pencil-square"></i> Редактировать
         </a>
@@ -532,7 +532,7 @@
         <a href="{% url 'documents:main_export_pdf' main.pk %}" class="action-btn btn-export">
           <i class="bi bi-file-earmark-pdf"></i> Экспорт в PDF
         </a>
-        {% endif %}
+    {% endif %}
       </div>
     </div>
   </div>

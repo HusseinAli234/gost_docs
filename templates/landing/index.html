@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Выберите тип документа | ГОСТ Docs{% endblock %}
+{% block title %}ГОСТ Docs - Управление документами{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -9,148 +9,306 @@
     .hero-section {
         background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
         color: white;
-        padding: 5rem 0;
+        padding: 6rem 0;
         margin-bottom: 4rem;
-        border-radius: 0 0 1.5rem 1.5rem;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border-radius: 0 0 2rem 2rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
     }
+    
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('{% static "img/pattern.png" %}') repeat;
+        opacity: 0.1;
+    }
+    
+    .hero-badge {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2rem;
+        padding: 0.5rem 1.5rem;
+        display: inline-block;
+        backdrop-filter: blur(5px);
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+    }
+    
     .cards-container {
         margin-top: -3.5rem;
     }
+    
     .card-document {
         transition: all 0.4s ease;
         height: 100%;
         border: none;
-        border-radius: 1rem;
+        border-radius: 1.5rem;
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
         opacity: 0;
     }
+    
     .card-document:hover {
         transform: translateY(-10px);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
     }
+    
     .card-header {
         background: none;
         border: none;
-        padding: 1.5rem 1.5rem 0;
+        padding: 2rem 2rem 0;
     }
+    
     .card-body {
-        padding: 1.5rem;
+        padding: 2rem;
         display: flex;
         flex-direction: column;
     }
+    
     .document-icon {
-        width: 80px;
-        height: 80px;
+        width: 100px;
+        height: 100px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 1rem;
-        font-size: 2.5rem;
-        margin-bottom: 1.5rem;
+        border-radius: 1.5rem;
+        font-size: 3rem;
+        margin-bottom: 2rem;
         color: white;
+        position: relative;
     }
-    .document-icon.gost {
-        background: linear-gradient(135deg, #0d6efd, #0091ff);
-        box-shadow: 0 10px 20px rgba(13, 110, 253, 0.2);
+    
+    .document-icon::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: inherit;
+        border-radius: inherit;
+        filter: blur(15px);
+        opacity: 0.7;
+        z-index: -1;
+        transform: translateY(10px) scale(0.95);
     }
-    .document-icon.sto {
-        background: linear-gradient(135deg, #198754, #20c997);
-        box-shadow: 0 10px 20px rgba(25, 135, 84, 0.2);
-    }
+    
     .document-icon.main {
         background: linear-gradient(135deg, #6f42c1, #7952b3);
-        box-shadow: 0 10px 20px rgba(111, 66, 193, 0.2);
     }
+    
     .document-title {
         font-weight: 700;
-        margin-bottom: 1rem;
-        font-size: 1.75rem;
+        margin-bottom: 1.5rem;
+        font-size: 2rem;
     }
+    
     .document-description {
         flex-grow: 1;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         color: #6c757d;
+        font-size: 1.1rem;
+        line-height: 1.6;
     }
+    
     .btn-document {
-        padding: 0.8rem 1.5rem;
+        padding: 1rem 2rem;
         font-weight: 600;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border-radius: 0.75rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
         transition: all 0.3s ease;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 0.9rem;
+        letter-spacing: 1px;
+        font-size: 1rem;
     }
+    
     .btn-document:hover {
         transform: translateY(-3px);
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
     }
-    .btn-gost {
-        background: linear-gradient(135deg, #0d6efd, #0091ff);
-        border: none;
-    }
-    .btn-sto {
-        background: linear-gradient(135deg, #198754, #20c997);
-        border: none;
-    }
+    
     .btn-main {
         background: linear-gradient(135deg, #6f42c1, #7952b3);
         border: none;
         color: white;
     }
-    .feature-badge {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: rgba(255, 255, 255, 0.85);
-        color: #212529;
-        padding: 0.35rem 0.75rem;
-        border-radius: 2rem;
-        font-size: 0.8rem;
-        font-weight: 600;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-    }
-    .info-section {
-        margin-top: 4rem;
-        padding: 2rem;
-        border-radius: 1rem;
-        background: #f8f9fa;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
-    }
-    .table-comparison {
-        border-radius: 0.5rem;
-        overflow: hidden;
-    }
-    .table-comparison th {
-        background-color: #e9ecef;
-        font-weight: 600;
-    }
-    .compare-header {
-        position: relative;
-        display: inline-block;
+    
+    .feature-item {
+        display: flex;
+        align-items: flex-start;
         margin-bottom: 1.5rem;
     }
-    .compare-header:after {
+    
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+        min-width: 50px;
+        border-radius: 50%;
+        background: rgba(111, 66, 193, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        color: #6f42c1;
+        font-size: 1.5rem;
+    }
+    
+    .feature-content h4 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .feature-content p {
+        color: #6c757d;
+        margin-bottom: 0;
+    }
+    
+    .info-section {
+        padding: 5rem 0;
+        background: #f8f9fa;
+        border-radius: 2rem;
+        margin: 5rem 0;
+    }
+    
+    .section-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 3rem;
+        text-align: center;
+        position: relative;
+    }
+    
+    .section-title::after {
         content: '';
         position: absolute;
-        bottom: -8px;
-        left: 0;
-        width: 60px;
-        height: 3px;
-        background: linear-gradient(135deg, #0d6efd, #0091ff);
-        border-radius: 3px;
+        bottom: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(135deg, #6f42c1, #7952b3);
+        border-radius: 2px;
     }
+    
+    .testimonial-card {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .testimonial-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+    
+    .testimonial-text {
+        font-style: italic;
+        margin-bottom: 1.5rem;
+        color: #495057;
+        position: relative;
+    }
+    
+    .testimonial-text::before {
+        content: '"';
+        font-size: 4rem;
+        position: absolute;
+        top: -2rem;
+        left: -1rem;
+        color: rgba(111, 66, 193, 0.1);
+        font-family: serif;
+    }
+    
+    .testimonial-author {
+        display: flex;
+        align-items: center;
+    }
+    
+    .testimonial-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        overflow: hidden;
+        margin-right: 1rem;
+    }
+    
+    .testimonial-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .testimonial-info h5 {
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+    }
+    
+    .testimonial-info span {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .cta-section {
+        background: linear-gradient(135deg, #6f42c1, #7952b3);
+        border-radius: 2rem;
+        padding: 4rem 0;
+        color: white;
+        text-align: center;
+        margin-bottom: 5rem;
+    }
+    
+    .cta-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+    
+    .cta-description {
+        font-size: 1.2rem;
+        margin-bottom: 2.5rem;
+        opacity: 0.9;
+    }
+    
+    .btn-cta {
+        background: white;
+        color: #6f42c1;
+        font-weight: 600;
+        padding: 1rem 2.5rem;
+        border-radius: 0.75rem;
+        font-size: 1.1rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-cta:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+    }
+    
     @media (max-width: 767px) {
         .hero-section {
-            padding: 3rem 0;
+            padding: 4rem 0;
             margin-bottom: 2rem;
         }
         .document-title {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
         }
         .cards-container {
             margin-top: -1.5rem;
+        }
+        .section-title {
+            font-size: 2rem;
+        }
+        .cta-title {
+            font-size: 2rem;
         }
     }
 </style>
@@ -161,8 +319,12 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8">
-                <h1 class="display-4 fw-bold mb-3">Добро пожаловать в ГОСТ Docs</h1>
-                <p class="lead opacity-75 mb-4">Выберите тип документа, который вы хотите создать</p>
+                <div class="hero-badge">Простое управление документами</div>
+                <h1 class="display-4 fw-bold mb-4">Добро пожаловать в ГОСТ Docs</h1>
+                <p class="lead opacity-75 mb-5" style="font-size: 1.25rem;">Создавайте, редактируйте и форматируйте ваши документы в соответствии со всеми требованиями и стандартами</p>
+                <a href="{% url 'documents:main_list' %}" class="btn btn-light btn-lg px-5 py-3 fw-bold">
+                    Начать работу <i class="bi bi-arrow-right ms-2"></i>
+                </a>
             </div>
         </div>
     </div>
@@ -170,103 +332,159 @@
 
 <div class="container cards-container">
     <div class="row g-4 justify-content-center">
-        <div class="col-md-4">
-            <div class="card card-document h-100 position-relative">
-                <span class="feature-badge">Популярный</span>
-                <div class="card-header text-start">
-                    <div class="document-icon gost">
-                        <i class="bi bi-file-earmark-text"></i>
-                    </div>
-                    <h3 class="document-title">ГОСТ 7.32-2017</h3>
-                </div>
-                <div class="card-body">
-                    <div class="document-description">
-                        <p>Стандарт оформления отчетов о научно-исследовательской работе, соответствующий требованиям ГОСТ 7.32-2017.</p>
-                        <p>Подходит для академических и научных работ, курсовых и дипломных проектов.</p>
-                    </div>
-                    <div class="d-flex align-items-center mt-auto">
-                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
-                        <span class="small text-muted">Официальный государственный стандарт</span>
-                    </div>
-                    <div class="d-flex align-items-center mt-2 mb-3">
-                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
-                        <span class="small text-muted">Подходит для любых организаций</span>
-                    </div>
-                    <a href="{% url 'documents:gost_list' %}" class="btn btn-document btn-gost w-100">
-                        <i class="bi bi-arrow-right-circle me-2"></i>Выбрать ГОСТ
-                    </a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card card-document h-100 position-relative">
-                <div class="card-header text-start">
-                    <div class="document-icon sto">
-                        <i class="bi bi-file-earmark-ruled"></i>
-                    </div>
-                    <h3 class="document-title">СТО СФУ 4.2</h3>
-                </div>
-                <div class="card-body">
-                    <div class="document-description">
-                        <p>Стандарт организации Сибирского районного университета для оформления учебных и научных работ.</p>
-                        <p>Оптимален для курсовых, дипломных работ и диссертаций в СФУ.</p>
-                    </div>
-                    <div class="d-flex align-items-center mt-auto">
-                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                        <span class="small text-muted">Соответствует требованиям СФУ</span>
-                    </div>
-                    <div class="d-flex align-items-center mt-2 mb-3">
-                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                        <span class="small text-muted">Упрощенное оформление</span>
-                    </div>
-                    <a href="{% url 'documents:sto_list' %}" class="btn btn-document btn-sto w-100">
-                        <i class="bi bi-arrow-right-circle me-2"></i>Выбрать СТО
-                    </a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
+        <div class="col-lg-8">
             <div class="card card-document h-100 position-relative">
                 <div class="card-header text-start">
                     <div class="document-icon main">
                         <i class="bi bi-folder-fill"></i>
                     </div>
-                    <h3 class="document-title">Основной документ</h3>
+                    <h3 class="document-title">Управление документами</h3>
                 </div>
                 <div class="card-body">
                     <div class="document-description">
-                        <p>Создайте и управляйте вашими основными документами (дипломы, курсовые, отчёты и др.).</p>
+                        <p>Создавайте и управляйте вашими документами любого типа: дипломные работы, курсовые проекты, научные отчеты, диссертации и многое другое. Наш сервис поможет вам соблюдать все требования к оформлению.</p>
                     </div>
-                    <div class="d-flex align-items-center mt-auto">
-                        <i class="bi bi-check-circle-fill text-secondary me-2"></i>
-                        <span class="small text-muted">Поддерживает все виды работ</span>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Удобное редактирование</h4>
+                            <p>Встроенный текстовый редактор с форматированием и стилями</p>
+                        </div>
                     </div>
-                    <a href="{% url 'documents:main_list' %}" class="btn btn-document btn-main w-100">
-                        <i class="bi bi-arrow-right-circle me-2"></i>Перейти
-                    </a>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-file-earmark-pdf"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Экспорт в PDF и DOCX</h4>
+                            <p>Сохраняйте документы в популярных форматах с сохранением форматирования</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-book"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Автоматическая библиография</h4>
+                            <p>Управление источниками и автоматическое форматирование списка литературы</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'documents:main_list' %}" class="btn btn-document btn-main w-100">
+                            <i class="bi bi-arrow-right-circle me-2"></i>Перейти к документам
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="info-section mt-5">
-        <h4 class="compare-header">Сравнение стандартов</h4>
-        <div class="table-responsive">
-            <table class="table table-comparison table-hover">
-                <thead>
-                    <tr>
-                        <th scope="col">Характеристика</th>
-                        <th scope="col" class="text-primary">ГОСТ 7.32-2017</th>
-                        <th scope="col" class="text-success">СТО СФУ 4.2</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td><strong>Применение</strong></td><td>Все организации в России</td><td>Сибирский федеральный университет</td></tr>
-                    <tr><td><strong>Структура документа</strong></td><td>Стандартная научно-техническая</td><td>Адаптирована под требования СФУ</td></tr>
-                    <tr><td><strong>Оформление текста</strong></td><td>По ГОСТ</td><td>По стандартам СФУ</td></tr>
-                    <tr><td><strong>Библиография</strong></td><td>ГОСТ Р 7.0.5-2008</td><td>Адаптирована для СФУ</td></tr>
-                    <tr><td><strong>Сложность</strong></td><td>Стандартная</td><td>Упрощенная</td></tr>
-                </tbody>
-            </table>
+    
+    <div class="info-section">
+        <div class="container">
+            <h2 class="section-title">Почему выбирают ГОСТ Docs</h2>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-lightning-charge-fill" style="font-size: 3rem; color: #6f42c1;"></i>
+                        </div>
+                        <h3 class="h4 mb-3">Быстрое создание</h3>
+                        <p class="text-muted">Создавайте документы быстро и без лишних усилий благодаря интуитивному интерфейсу</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-shield-check" style="font-size: 3rem; color: #6f42c1;"></i>
+                        </div>
+                        <h3 class="h4 mb-3">Соответствие стандартам</h3>
+                        <p class="text-muted">Все документы соответствуют требованиям ГОСТ и других стандартов оформления</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-cloud-arrow-up" style="font-size: 3rem; color: #6f42c1;"></i>
+                        </div>
+                        <h3 class="h4 mb-3">Облачное хранение</h3>
+                        <p class="text-muted">Доступ к вашим документам из любой точки мира с любого устройства</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2 class="section-title">Отзывы пользователей</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="testimonial-card">
+                    <div class="testimonial-text">
+                        ГОСТ Docs значительно упростил процесс оформления моей дипломной работы. Больше не нужно беспокоиться о правильном форматировании и стилях.
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">
+                            <img src="https://randomuser.me/api/portraits/women/45.jpg" alt="Анна К.">
+                        </div>
+                        <div class="testimonial-info">
+                            <h5>Анна К.</h5>
+                            <span>Студентка, МГТУ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card">
+                    <div class="testimonial-text">
+                        Как научный руководитель, я рекомендую ГОСТ Docs всем своим студентам. Это экономит время и помогает сосредоточиться на содержании работы.
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">
+                            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Иван Петрович">
+                        </div>
+                        <div class="testimonial-info">
+                            <h5>Иван Петрович</h5>
+                            <span>Профессор, СПбГУ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="testimonial-card">
+                    <div class="testimonial-text">
+                        Автоматическое форматирование списка литературы и возможность экспорта в PDF — это именно то, что нужно для современных научных работ.
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">
+                            <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="Елена С.">
+                        </div>
+                        <div class="testimonial-info">
+                            <h5>Елена С.</h5>
+                            <span>Аспирант, НГУ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="cta-section mt-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <h2 class="cta-title">Готовы начать?</h2>
+                    <p class="cta-description">Присоединяйтесь к тысячам студентов и исследователей, которые уже используют ГОСТ Docs для создания безупречных документов</p>
+                    <a href="{% url 'documents:main_list' %}" class="btn btn-cta">
+                        Создать документ <i class="bi bi-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -275,6 +493,7 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Анимация появления карточек
         const cards = document.querySelectorAll('.card-document');
         setTimeout(() => {
             cards.forEach((card, index) => {
@@ -283,6 +502,54 @@
                 }, index * 300);
             });
         }, 300);
+        
+        // Анимация появления секций при скролле
+        const animateOnScroll = function() {
+            const sections = document.querySelectorAll('.info-section, .testimonial-card, .cta-section');
+            sections.forEach(section => {
+                const sectionTop = section.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+                
+                if (sectionTop < windowHeight * 0.85) {
+                    section.classList.add('animate__animated', 'animate__fadeInUp');
+                }
+            });
+        };
+        
+        // Добавляем класс для анимации
+        document.querySelectorAll('.info-section, .testimonial-card, .cta-section').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+            el.style.transform = 'translateY(20px)';
+        });
+        
+        // Обработчик скролла
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.info-section, .testimonial-card, .cta-section');
+            sections.forEach(section => {
+                const sectionTop = section.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+                
+                if (sectionTop < windowHeight * 0.85) {
+                    section.style.opacity = '1';
+                    section.style.transform = 'translateY(0)';
+                }
+            });
+        });
+        
+        // Запускаем один раз для элементов, которые уже видны
+        setTimeout(() => {
+            const sections = document.querySelectorAll('.info-section, .testimonial-card, .cta-section');
+            sections.forEach(section => {
+                const sectionTop = section.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+                
+                if (sectionTop < windowHeight * 0.85) {
+                    section.style.opacity = '1';
+                    section.style.transform = 'translateY(0)';
+                }
+            });
+        }, 500);
     });
 </script>
 {% endblock %}
