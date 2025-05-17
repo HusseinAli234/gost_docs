@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "unfold",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,9 +42,14 @@ INSTALLED_APPS = [
     'documents',
     'ckeditor',
     'ckeditor_uploader',
-
-
 ]
+
+UNFOLD = {
+    "SITE_TITLE": "My Admin",
+    "SITE_HEADER": "My Admin Panel",
+    "SITE_ICON": "🚀",  # Можно заменить на emoji или иконку
+    "SHOW_COLLABORATION": False,  # или True, если нужно
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
