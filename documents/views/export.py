@@ -152,14 +152,100 @@ def process_html_to_docx(html_content, docx_document):
 
     logger.info(f"Обработка HTML контента длиной {len(html_content)} символов")
     
+    # Патч для библиотеки htmldocx
+    # Исправляем ошибку AttributeError: 'NoneType' object has no attribute 'add_break'
+    try:
+        from htmldocx.h2d import HtmlToDocx as OriginalHtmlToDocx
+        
+        # Создаем патч класса HtmlToDocx
+        class PatchedHtmlToDocx(OriginalHtmlToDocx):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.run = None  # Добавляем отсутствующий атрибут
+            
+            def handle_starttag(self, tag, attrs):
+                try:
+                    # Проверяем, нужно ли инициализировать self.run
+                    if tag in ['br', 'hr'] and self.run is None and self.paragraph is not None:
+                        # Создаем run, если его нет
+                        self.run = self.paragraph.add_run()
+                    
+                    # Пытаемся выполнить оригинальный метод
+                    super().handle_starttag(tag, attrs)
+                except AttributeError as e:
+                    # Если возникла ошибка с атрибутом run, игнорируем ее
+                    if "'NoneType' object has no attribute 'add_break'" in str(e):
+                        logger.warning("Игнорирована ошибка в htmldocx: 'NoneType' object has no attribute 'add_break'")
+                        # Пытаемся создать run и повторить операцию
+                        if self.paragraph is not None:
+                            self.run = self.paragraph.add_run()
+                            if tag == 'br':
+                                self.run.add_break()
+                    elif "'NoneType' object has no attribute" in str(e):
+                        logger.warning(f"Игнорирована ошибка в htmldocx: {str(e)}")
+                    else:
+                        # Другие ошибки пробрасываем дальше
+                        raise
+            
+            def handle_data(self, data):
+                try:
+                    super().handle_data(data)
+                except AttributeError as e:
+                    if "'NoneType' object has no attribute" in str(e):
+                        logger.warning(f"Игнорирована ошибка в htmldocx при обработке данных: {str(e)}")
+                        # Пытаемся восстановить состояние
+                        if self.paragraph is None:
+                            self.paragraph = self.document.add_paragraph()
+                        if self.run is None:
+                            self.run = self.paragraph.add_run()
+                        self.run.text = data
+                    else:
+                        raise
+            
+            # Патч для обработки таблиц
+            def handle_table(self, attrs=None):
+                try:
+                    if attrs is None:
+                        # Вызываем оригинальный метод без параметров
+                        super().handle_table()
+                    else:
+                        # Вызываем оригинальный метод с параметрами
+                        super().handle_table(attrs)
+                except (AttributeError, ValueError, KeyError) as e:
+                    logger.warning(f"Игнорирована ошибка в htmldocx при обработке таблицы: {str(e)}")
+                    # Пытаемся создать таблицу
+                    self.table = self.document.add_table(rows=1, cols=1)
+                    
+                    # Пробуем применить стиль таблицы
+                    if hasattr(self, 'table_style') and self.table_style:
+                        try:
+                            # Сначала пробуем применить указанный стиль
+                            self.table.style = self.table_style
+                        except KeyError:
+                            # Если стиль не найден, пробуем применить стандартные стили
+                            try:
+                                logger.info(f"Стиль '{self.table_style}' не найден, пробуем 'Table Normal'")
+                                self.table.style = 'Table Normal'
+                            except KeyError:
+                                # Если и стандартный стиль не найден, оставляем таблицу без стиля
+                                logger.warning("Не удалось применить стиль к таблице, оставляем без стиля")
+                        except Exception as style_e:
+                            logger.warning(f"Ошибка при применении стиля к таблице: {style_e}")
+                    
+                    self.row_index = 0
+                    self.col_index = 0
+        
+        # Заменяем оригинальный класс на патченный
+        HtmlToDocx = PatchedHtmlToDocx
+        logger.info("Применен расширенный патч для библиотеки htmldocx")
+    except Exception as e:
+        logger.warning(f"Не удалось применить патч для htmldocx: {e}")
+    
     try:
         # Создаем временную директорию для хранения изображений
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Модифицируем HTML для обработки изображений
+            # Подготавливаем изображения и сохраняем их во временную директорию
             soup = BeautifulSoup(html_content, 'html.parser')
-            
-            # Словарь для хранения информации об изображениях
-            # Ключ - уникальный идентификатор, значение - путь к сохраненному изображению
             images_map = {}
             
             # Находим все изображения
@@ -258,8 +344,9 @@ def process_html_to_docx(html_content, docx_document):
                     # Если удалось загрузить изображение, сохраняем информацию
                     if img_path and os.path.exists(img_path):
                         images_map[img_id] = img_path
-                        # НЕ заменяем тег img на плейсхолдер, а добавляем к нему атрибут data-img-id
-                        img['data-img-id'] = img_id
+                        # Заменяем тег img на специальный маркер, который не будет интерпретирован как HTML
+                        img_marker = soup.new_string(f"[[IMG:{img_id}]]")
+                        img.replace_with(img_marker)
                 
                 except Exception as e:
                     logger.error(f"Ошибка при обработке изображения {src}: {e}", exc_info=True)
@@ -267,73 +354,78 @@ def process_html_to_docx(html_content, docx_document):
             # Преобразуем модифицированный HTML в строку
             modified_html = str(soup)
             
-            # Создаем парсер htmldocx
-            parser = HtmlToDocx()
-            parser.table_style = 'TableGrid'
+            # Разбиваем HTML на части по маркерам изображений
+            parts = []
+            last_pos = 0
             
-            # Добавляем HTML в документ
-            parser.add_html_to_document(modified_html, docx_document)
+            for match in re.finditer(r'\[\[IMG:(IMG_PLACEHOLDER_\d+)\]\]', modified_html):
+                img_id = match.group(1)
+                start_pos = match.start()
+                end_pos = match.end()
+                
+                # Добавляем текст до изображения
+                if start_pos > last_pos:
+                    parts.append(('text', modified_html[last_pos:start_pos]))
+                
+                # Добавляем изображение
+                parts.append(('image', img_id))
+                
+                # Обновляем позицию
+                last_pos = end_pos
             
-            # После добавления HTML, заменяем изображения
-            for paragraph in docx_document.paragraphs:
-                # Проверяем, содержит ли параграф изображение
-                img_id_match = re.search(r'data-img-id="(IMG_PLACEHOLDER_\d+)"', paragraph.text)
-                if img_id_match:
-                    img_id = img_id_match.group(1)
+            # Добавляем оставшийся текст
+            if last_pos < len(modified_html):
+                parts.append(('text', modified_html[last_pos:]))
+            
+            # Обрабатываем каждую часть
+            for part_type, content in parts:
+                if part_type == 'text' and content.strip():
+                    try:
+                        # Создаем временный HTML без маркеров изображений
+                        parser = HtmlToDocx()
+                        
+                        # Устанавливаем стиль для таблиц
+                        # Проверяем наличие стиля TableGrid в документе
+                        table_style = 'TableGrid'
+                        if table_style not in docx_document.styles:
+                            try:
+                                # Пробуем создать стиль TableGrid
+                                docx_document.styles.add_style('TableGrid', WD_STYLE_TYPE.TABLE)
+                                logger.info("Создан стиль 'TableGrid' для таблиц")
+                            except Exception:
+                                # Если не удалось, используем Table Normal или оставляем без стиля
+                                table_style = 'Table Normal' if 'Table Normal' in docx_document.styles else None
+                                logger.warning(f"Не удалось создать стиль 'TableGrid', используем '{table_style or 'без стиля'}'")
+                        
+                        # Устанавливаем стиль таблицы
+                        parser.table_style = table_style
+                        
+                        # Добавляем текст в документ
+                        parser.add_html_to_document(content, docx_document)
+                        
+                        # Очищаем HTML-теги из текста параграфов
+                        for paragraph in docx_document.paragraphs[-10:]:  # Проверяем только последние добавленные параграфы
+                            if '<' in paragraph.text and '>' in paragraph.text:
+                                clean_text = re.sub(r'<[^>]*>', '', paragraph.text).strip()
+                                if clean_text:
+                                    paragraph.text = clean_text
+                    except Exception as e:
+                        logger.error(f"Ошибка при обработке текстовой части: {e}", exc_info=True)
+                        # Добавляем текст напрямую в случае ошибки
+                        clean_text = BeautifulSoup(content, 'html.parser').get_text()
+                        if clean_text.strip():
+                            docx_document.add_paragraph(clean_text)
+                
+                elif part_type == 'image':
+                    img_id = content
                     img_path = images_map.get(img_id)
                     
                     if img_path and os.path.exists(img_path):
-                        logger.info(f"Заменяю изображение с ID {img_id} на {img_path}")
-                        
-                        # Сохраняем текст до и после тега изображения
-                        full_text = paragraph.text
-                        img_tag_pattern = r'<img[^>]*data-img-id="' + img_id + r'"[^>]*>'
-                        img_tag_match = re.search(img_tag_pattern, full_text)
-                        
-                        if img_tag_match:
-                            before_text = full_text[:img_tag_match.start()].strip()
-                            after_text = full_text[img_tag_match.end():].strip()
-                            
-                            # Очищаем параграф
-                            paragraph.clear()
-                            
-                            # Добавляем текст до изображения, если он есть
-                            if before_text:
-                                paragraph.add_run(before_text)
-                            
-                            # Добавляем изображение
-                            run = paragraph.add_run()
-                            run.add_picture(img_path, width=Inches(5.0))
-                            
-                            # Добавляем текст после изображения, если он есть
-                            if after_text:
-                                paragraph.add_run(after_text)
-                        else:
-                            # Если не нашли точное положение тега, просто добавляем изображение
-                            # и сохраняем весь текст, очищенный от HTML тегов
-                            clean_text = re.sub(r'<[^>]*>', '', full_text).strip()
-                            paragraph.clear()
-                            
-                            if clean_text:
-                                paragraph.add_run(clean_text)
-                                
-                            # Добавляем изображение в новый параграф
-                            p = docx_document.add_paragraph()
-                            run = p.add_run()
-                            run.add_picture(img_path, width=Inches(5.0))
-                    else:
-                        logger.warning(f"Не удалось найти изображение для ID {img_id}")
-                        
-                        # Очищаем текст от HTML тегов
-                        clean_text = re.sub(r'<[^>]*>', '', paragraph.text).strip()
-                        if clean_text:
-                            paragraph.text = clean_text
-                
-                # Для параграфов без изображений, очищаем от HTML тегов
-                elif '<' in paragraph.text and '>' in paragraph.text:
-                    clean_text = re.sub(r'<[^>]*>', '', paragraph.text).strip()
-                    if clean_text:
-                        paragraph.text = clean_text
+                        # Добавляем изображение в новый параграф
+                        p = docx_document.add_paragraph()
+                        run = p.add_run()
+                        run.add_picture(img_path, width=Inches(5.0))
+                        logger.info(f"Добавлено изображение: {img_path}")
             
             logger.info("HTML успешно преобразован и добавлен в документ")
     
@@ -445,6 +537,23 @@ def ensure_basic_styles(docx):
                 logger.info(f"Стиль '{list_style_name}' успешно создан")
             except Exception as e:
                 logger.error(f"Ошибка при создании стиля '{list_style_name}': {e}")
+    
+    # Добавляем стиль TableGrid для таблиц
+    if 'TableGrid' not in docx.styles:
+        try:
+            logger.info("Создание стиля 'TableGrid' для таблиц")
+            # Для таблиц нужен другой тип стиля
+            table_style = docx.styles.add_style('TableGrid', WD_STYLE_TYPE.TABLE)
+            logger.info("Стиль 'TableGrid' успешно создан")
+        except Exception as e:
+            logger.error(f"Ошибка при создании стиля 'TableGrid': {e}")
+            # Если не удалось создать стиль TableGrid, создаем запасной стиль для таблиц
+            try:
+                if 'Table Normal' not in docx.styles:
+                    docx.styles.add_style('Table Normal', WD_STYLE_TYPE.TABLE)
+                    logger.info("Создан запасной стиль 'Table Normal' для таблиц")
+            except Exception as fallback_e:
+                logger.error(f"Не удалось создать запасной стиль для таблиц: {fallback_e}")
 
 def replace_document_fields(docx, replacements):
     """
@@ -748,18 +857,6 @@ def main_export_docx(request, pk):
             docx.add_paragraph("Документ не содержит данных")
         
         # Добавляем раздел "Работа с источниками" и список литературы
-        docx.add_paragraph("", style='Normal')  # Пустая строка для разделения
-        heading = docx.add_paragraph("1.5 Работа с источниками", style='Heading 2')
-        
-        # Добавляем описание функционала работы с источниками
-        p1 = docx.add_paragraph(style='Normal')
-        p1.add_run("• Ввод DOI → Получение метаданных через CrossRef API")
-        
-        p2 = docx.add_paragraph(style='Normal')
-        p2.add_run("• Автоматическая генерация библиографической ссылки")
-        
-        p3 = docx.add_paragraph(style='Normal')
-        p3.add_run("• Список литературы в формате ГОСТ 7.1-2003")
         
         # Добавляем список литературы
         add_references_section(docx, document)

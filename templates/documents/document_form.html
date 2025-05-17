@@ -12,12 +12,12 @@
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-md-10">
-    <div class="card shadow-sm border-0">
-      <div class="card-body p-4">
-        <h3 class="card-title text-center mb-4">
-          {% if form.instance.pk %}Редактировать документ{% else %}Создать новый документ{% endif %}
-        </h3>
+    <div class="col-md-10">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <h3 class="card-title text-center mb-4">
+                    {% if form.instance.pk %}Редактировать документ{% else %}Создать новый документ{% endif %}
+                </h3>
 
         {% if error_message %}
         <div class="alert alert-danger mb-4">{{ error_message }}</div>
@@ -25,57 +25,57 @@
 
         <form method="post" enctype="multipart/form-data"
               action="{% if form.instance.pk %}{% url 'documents:gost_edit' form.instance.pk %}{% else %}{% url 'documents:gost_create' %}{% endif %}">
-          {% csrf_token %}
+                    {% csrf_token %}
 
           {# Навигация вкладок #}
-          <ul class="nav nav-tabs mb-3" id="documentTab" role="tablist">
-            <li class="nav-item" role="presentation">
+                    <ul class="nav nav-tabs mb-3" id="documentTab" role="tablist">
+                        <li class="nav-item" role="presentation">
               <button class="nav-link active" id="main-tab" data-bs-toggle="tab"
                       data-bs-target="#main" type="button" role="tab" aria-controls="main"
                       aria-selected="true">Основное</button>
-            </li>
-            <li class="nav-item" role="presentation">
+                        </li>
+                        <li class="nav-item" role="presentation">
               <button class="nav-link" id="title-tab" data-bs-toggle="tab"
                       data-bs-target="#title" type="button" role="tab" aria-controls="title"
                       aria-selected="false">Титульный лист</button>
-            </li>
-            <li class="nav-item" role="presentation">
+                        </li>
+                        <li class="nav-item" role="presentation">
               <button class="nav-link" id="abstract-tab" data-bs-toggle="tab"
                       data-bs-target="#abstract" type="button" role="tab" aria-controls="abstract"
                       aria-selected="false">Реферат</button>
-            </li>
-            <li class="nav-item" role="presentation">
+                        </li>
+                        <li class="nav-item" role="presentation">
               <button class="nav-link" id="performers-tab" data-bs-toggle="tab"
                       data-bs-target="#performers" type="button" role="tab" aria-controls="performers"
                       aria-selected="false">Исполнители</button>
-            </li>
-            <li class="nav-item" role="presentation">
+                        </li>
+                        <li class="nav-item" role="presentation">
               <button class="nav-link" id="terms-tab" data-bs-toggle="tab"
                       data-bs-target="#terms" type="button" role="tab" aria-controls="terms"
                       aria-selected="false">Термины</button>
-            </li>
-            <li class="nav-item" role="presentation">
+                        </li>
+                        <li class="nav-item" role="presentation">
               <button class="nav-link" id="abbrevs-tab" data-bs-toggle="tab"
                       data-bs-target="#abbrevs" type="button" role="tab" aria-controls="abbrevs"
                       aria-selected="false">Сокращения</button>
-            </li>
-            <li class="nav-item" role="presentation">
+                        </li>
+                         <li class="nav-item" role="presentation">
               <button class="nav-link" id="refs-tab" data-bs-toggle="tab"
                       data-bs-target="#refs" type="button" role="tab" aria-controls="refs"
                       aria-selected="false">Источники</button>
-            </li>
-            <li class="nav-item" role="presentation">
+                        </li>
+                         <li class="nav-item" role="presentation">
               <button class="nav-link" id="apps-tab" data-bs-toggle="tab"
                       data-bs-target="#apps" type="button" role="tab" aria-controls="apps"
                       aria-selected="false">Приложения</button>
-            </li>
-          </ul>
+                        </li>
+                    </ul>
 
-          <div class="tab-content" id="documentTabContent">
+                    <div class="tab-content" id="documentTabContent">
             {# Основное #}
             <div class="tab-pane fade show active" id="main" role="tabpanel" aria-labelledby="main-tab">
-              {{ form.as_p }}
-            </div>
+                            {{ form.as_p }}
+                        </div>
 
             {# Титульный лист #}
             <div class="tab-pane fade" id="title" role="tabpanel" aria-labelledby="title-tab">
@@ -86,7 +86,7 @@
                 </div>
               {% endfor %}
               {% for hidden in title_form.hidden_fields %}{{ hidden }}{% endfor %}
-            </div>
+                        </div>
 
             {# Реферат #}
             <div class="tab-pane fade" id="abstract" role="tabpanel" aria-labelledby="abstract-tab">
@@ -97,82 +97,82 @@
                 </div>
               {% endfor %}
               {% for hidden in abstract_form.hidden_fields %}{{ hidden }}{% endfor %}
-            </div>
+                        </div>
 
             {# Исполнители #}
             <div class="tab-pane fade" id="performers" role="tabpanel" aria-labelledby="performers-tab">
-              {{ performer_formset.management_form }}
+                            {{ performer_formset.management_form }}
               {% for formset in performer_formset.forms %}
                 <div class="border p-3 mb-3">
                   {{ formset.as_p }}
-                </div>
-              {% endfor %}
-            </div>
+                                </div>
+                            {% endfor %}
+                        </div>
 
             {# Термины #}
             <div class="tab-pane fade" id="terms" role="tabpanel" aria-labelledby="terms-tab">
-              {{ term_formset.management_form }}
+                            {{ term_formset.management_form }}
               {% for formset in term_formset.forms %}
                 <div class="border p-3 mb-3">
                   {{ formset.as_p }}
-                </div>
-              {% endfor %}
-            </div>
+                                </div>
+                            {% endfor %}
+                        </div>
 
             {# Сокращения #}
             <div class="tab-pane fade" id="abbrevs" role="tabpanel" aria-labelledby="abbrevs-tab">
-              {{ abbrev_formset.management_form }}
+                             {{ abbrev_formset.management_form }}
               {% for formset in abbrev_formset.forms %}
                 <div class="border p-3 mb-3">
                   {{ formset.as_p }}
-                </div>
-              {% endfor %}
-            </div>
+                                </div>
+                            {% endfor %}
+                        </div>
 
             {# Источники #}
             <div class="tab-pane fade" id="refs" role="tabpanel" aria-labelledby="refs-tab">
-              {{ reference_formset.management_form }}
+                            {{ reference_formset.management_form }}
               {% for formset in reference_formset.forms %}
                 <div class="border p-3 mb-3">
                   {{ formset.as_p }}
-                </div>
-              {% endfor %}
-            </div>
+                                </div>
+                            {% endfor %}
+                        </div>
 
             {# Приложения #}
             <div class="tab-pane fade" id="apps" role="tabpanel" aria-labelledby="apps-tab">
-              {{ appendix_formset.management_form }}
+                             {{ appendix_formset.management_form }}
               {% for formset in appendix_formset.forms %}
                 <div class="border p-3 mb-3">
                   {{ formset.as_p }}
-                </div>
-              {% endfor %}
-            </div>
+                                </div>
+                            {% endfor %}
+                        </div>
 
           </div>
 
-          <button class="btn btn-primary mt-4" type="submit">Сохранить</button>
-        </form>
-      </div>
+                    <button class="btn btn-primary mt-4" type="submit">Сохранить</button>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-  {{ form.media }}
-  {{ title_form.media }}
-  {{ abstract_form.media }}
-  {{ performer_formset.media }}
-  {{ term_formset.media }}
-  {{ abbrev_formset.media }}
-  {{ reference_formset.media }}
-  {{ appendix_formset.media }}
+    {{ form.media }}
+    {{ title_form.media }}
+    {{ abstract_form.media }}
+    {{ performer_formset.media }}
+    {{ term_formset.media }}
+    {{ abbrev_formset.media }}
+    {{ reference_formset.media }}
+    {{ appendix_formset.media }}
 {% endblock %}
 
 {% block extra_css %}
-<style>
+    <style>
   .tab-pane { padding-top: 1rem; }
   .border { background: #f8f9fa; }
-</style>
+    </style>
 {% endblock %}

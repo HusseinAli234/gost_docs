@@ -329,9 +329,9 @@
     <a href="{% url 'documents:main_create' %}" class="btn-create">
       <i class="bi bi-plus-lg"></i> Создать новый документ
     </a>
-  </div>
+</div>
   
-  {% if mains %}
+{% if mains %}
     <!-- Поиск документов -->
     <div class="search-container">
       <i class="bi bi-search search-icon"></i>
@@ -350,7 +350,7 @@
     
     <!-- Список документов -->
     <div class="row document-cards" id="documentsList">
-      {% for main in mains %}
+    {% for main in mains %}
       <div class="col-md-6 col-lg-4 document-item" data-type="{{ main.work_type }}" data-title="{{ main.title|lower }}">
         <div class="document-card">
           <div class="card-body">
@@ -382,14 +382,14 @@
           </div>
         </div>
       </div>
-      {% endfor %}
+    {% endfor %}
     </div>
     
     <!-- Пагинация -->
-    {% if is_paginated %}
+  {% if is_paginated %}
     <nav aria-label="Page navigation">
-      <ul class="pagination">
-        {% if page_obj.has_previous %}
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
           <li class="page-item">
             <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
               <i class="bi bi-chevron-left"></i> Предыдущая
@@ -406,29 +406,29 @@
             <li class="page-item active">
               <span class="page-link">{{ i }}</span>
             </li>
-          {% else %}
+      {% else %}
             <li class="page-item">
               <a class="page-link" href="?page={{ i }}">{{ i }}</a>
             </li>
-          {% endif %}
+      {% endif %}
         {% endfor %}
         
-        {% if page_obj.has_next %}
+      {% if page_obj.has_next %}
           <li class="page-item">
             <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
               Следующая <i class="bi bi-chevron-right"></i>
             </a>
           </li>
-        {% else %}
+      {% else %}
           <li class="page-item disabled">
             <span class="page-link">Следующая <i class="bi bi-chevron-right"></i></span>
           </li>
-        {% endif %}
-      </ul>
-    </nav>
-    {% endif %}
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
     
-  {% else %}
+{% else %}
     <!-- Пустое состояние - нет документов -->
     <div class="empty-state">
       <div class="empty-state-icon">

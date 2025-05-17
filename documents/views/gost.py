@@ -93,18 +93,18 @@ class DocumentCreateView(LoginRequiredMixin, View):
 
             return redirect('documents:gost_detail', pk=document.pk)
 
-        context = {
-            'form': doc_form,
-            'title_form': title_form,
-            'abstract_form': abstract_form,
-            'performer_formset': performer_formset,
-            'term_formset': term_formset,
-            'abbrev_formset': abbrev_formset,
-            'reference_formset': reference_formset,
-            'appendix_formset': appendix_formset,
+            context = {
+                'form': doc_form,
+                'title_form': title_form,
+                'abstract_form': abstract_form,
+                'performer_formset': performer_formset,
+                'term_formset': term_formset,
+                'abbrev_formset': abbrev_formset,
+                'reference_formset': reference_formset,
+                'appendix_formset': appendix_formset,
             'error_message': 'Пожалуйста, исправьте ошибки в форме.'
-        }
-        return render(request, self.template_name, context)
+            }
+            return render(request, self.template_name, context)
 
 
 class DocumentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
