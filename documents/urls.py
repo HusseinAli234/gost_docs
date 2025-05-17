@@ -20,6 +20,7 @@ from .views.main import (
     DocumentCreateView as MainDocumentCreateView,
     DocumentUpdateView as MainDocumentUpdateView,
     DocumentDeleteView as MainDocumentDeleteView,
+    update_references,
 )
 from . import views
 from django.conf import settings
@@ -63,6 +64,7 @@ urlpatterns = [
     path('main/<int:pk>/delete/', MainDocumentDeleteView.as_view(), name='main_delete'),
     path('main/<int:pk>/export/docx/', main_export_docx, name='main_export_docx'),
     path('main/<int:pk>/export/pdf/', main_export_pdf, name='main_export_pdf'),
+    path('main/<int:pk>/update-references/', update_references, name='update_references'),
 
     # Новый URL для получения списка шаблонов
     path('templates/', get_templates_view, name='get_templates'),

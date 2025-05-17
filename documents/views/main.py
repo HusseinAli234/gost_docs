@@ -8,6 +8,10 @@ from django.views.generic import (
 from django.contrib.auth.mixins import (
     LoginRequiredMixin, UserPassesTestMixin
 )
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.urls import reverse
 from documents.models import Document_main
 from documents.forms import Document_mainForm
 
@@ -61,3 +65,27 @@ class DocumentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 
     def test_func(self):
         return self.get_object().owner == self.request.user
+
+
+@login_required
+def update_references(request, pk):
+    """
+    Обновляет список DOI источников для документа.
+    
+    Args:
+        request: HTTP запрос
+        pk (int): ID документа
+        
+    Returns:
+        redirect: Перенаправление на страницу деталей документа
+    """
+    document = get_object_or_404(Document_main, pk=pk, owner=request.user)
+    
+    if request.method == 'POST':
+        references_doi = request.POST.get('references_doi', '').strip()
+        document.references_doi = references_doi
+        document.save()
+        
+        messages.success(request, "Список источников успешно обновлен.")
+    
+    return redirect(reverse('documents:main_detail', kwargs={'pk': pk}))

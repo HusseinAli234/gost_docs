@@ -5,15 +5,16 @@ from django.utils.text import slugify
 from django.conf import settings
 from django.contrib import messages
 
-from io import BytesIO
+from io import BytesIO, StringIO
 import os
 import logging
 import tempfile
 import base64
 import re
-# Удаляем BeautifulSoup, так как html2docx будет парсить HTML
-# from bs4 import BeautifulSoup 
+import mimetypes
+import json
 import requests
+from bs4 import BeautifulSoup
 from docx import Document
 from docx.shared import Pt, Inches, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -22,7 +23,7 @@ from docx2pdf import convert
 # Импорт DocxTemplate для работы с шаблонами
 from docxtpl import DocxTemplate
 
-# Импортируем html2docx правильно
+# Импортируем htmldocx вместо mammoth
 from htmldocx import HtmlToDocx
 
 # Попытка импортировать pythoncom для Windows
@@ -62,10 +63,84 @@ def clean_html(html_content):
         return ""
     return BeautifulSoup(html_content, 'html.parser').get_text()
 
+def django_mammoth_image_converter(image):
+    """
+    Пользовательская функция-конвертер изображений для mammoth.
+    Mammoth вызывает ее для каждого тега <img>.
+    Получает объект mammoth.images.Image, представляющий тег.
+    Должна вернуть словарь с ключами 'data' (байты изображения) и 'contentType' (MIME-тип).
+    Обрабатывает пути к медиа-файлам Django.
+    """
+    src = image.src
+    logger.debug(f"Mammoth встретил изображение с src: {src}")
+
+    try:
+        # Проверяем различные типы источников изображений
+        if src and src.startswith(settings.MEDIA_URL):
+            # 1. Изображение из медиа-хранилища Django
+            relative_media_path = src[len(settings.MEDIA_URL):]
+            file_path = os.path.join(settings.MEDIA_ROOT, relative_media_path)
+
+            if os.path.exists(file_path):
+                with open(file_path, 'rb') as f:
+                    image_data = f.read()
+                content_type, _ = mimetypes.guess_type(file_path)
+                logger.debug(f"Загружено изображение из медиа: {file_path}, тип: {content_type}")
+            else:
+                logger.warning(f"Файл изображения не найден: {file_path}")
+                return None
+
+        elif src and src.startswith('data:image/'):
+            # 2. Изображение в формате base64
+            try:
+                header, encoded = src.split(",", 1)
+                content_type = header.split(";")[0].split(":")[1]
+                image_data = base64.b64decode(encoded)
+                logger.debug(f"Декодировано base64 изображение, тип: {content_type}")
+            except Exception as e:
+                logger.error(f"Ошибка при декодировании base64 изображения: {e}")
+                return None
+
+        elif src and (src.startswith('http://') or src.startswith('https://')):
+            # 3. Изображение по внешнему URL
+            try:
+                response = requests.get(src, stream=True, timeout=10)
+                if response.status_code == 200:
+                    image_data = response.content
+                    content_type = response.headers.get('Content-Type', 'image/jpeg')
+                    logger.debug(f"Загружено изображение по URL: {src}, тип: {content_type}")
+                else:
+                    logger.warning(f"Не удалось загрузить изображение по URL: {src}, статус: {response.status_code}")
+                    return None
+            except Exception as e:
+                logger.error(f"Ошибка при загрузке изображения по URL {src}: {e}")
+                return None
+        else:
+            logger.warning(f"Неподдерживаемый формат src изображения: {src}")
+            return None
+
+        # Проверяем, что мы определили MIME-тип
+        if content_type is None:
+            logger.warning(f"Не удалось определить MIME-тип изображения: {src}. Изображение будет пропущено.")
+            return None
+
+        # Возвращаем данные в формате, который ожидает mammoth
+        return {
+            'src': src,
+            'alt': image.alt,
+            'data': image_data,
+            'contentType': content_type
+        }
+
+    except Exception as e:
+        logger.error(f"Общая ошибка при обработке изображения {src}: {e}", exc_info=True)
+        return None
+
 def process_html_to_docx(html_content, docx_document):
     """
     Преобразует HTML-контент в DOCX и добавляет его в существующий документ.
-    Использует библиотеку html2docx для конвертации.
+    Изображения загружаются напрямую по URL и вставляются в правильные места,
+    сохраняя текст вокруг изображений.
     
     Args:
         html_content (str): HTML-контент для преобразования.
@@ -75,22 +150,197 @@ def process_html_to_docx(html_content, docx_document):
         logger.info("HTML контент пуст, нечего добавлять.")
         return
 
-    logger.info(f"Обработка HTML контента длиной {len(html_content)} символов с использованием html2docx")
+    logger.info(f"Обработка HTML контента длиной {len(html_content)} символов")
     
     try:
-        # Создаем парсер html2docx
-        parser = HtmlToDocx()
-        
-        # Добавляем HTML в существующий документ
-        parser.add_html_to_document(html_content, docx_document)
-        
-        logger.info("HTML успешно преобразован и добавлен в документ с помощью html2docx")
-        
+        # Создаем временную директорию для хранения изображений
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Модифицируем HTML для обработки изображений
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Словарь для хранения информации об изображениях
+            # Ключ - уникальный идентификатор, значение - путь к сохраненному изображению
+            images_map = {}
+            
+            # Находим все изображения
+            images = soup.find_all('img')
+            for i, img in enumerate(images):
+                src = img.get('src', '')
+                if not src:
+                    continue
+                
+                logger.info(f"Обрабатываю изображение {i+1}/{len(images)}: {src[:50]}...")
+                
+                # Генерируем уникальный идентификатор для этого изображения
+                img_id = f"IMG_PLACEHOLDER_{i}"
+                
+                # Пытаемся загрузить изображение
+                img_path = None
+                
+                try:
+                    # Обрабатываем различные форматы src
+                    if src.startswith(('http://', 'https://')):
+                        # Внешний URL
+                        logger.info(f"Загрузка изображения по URL: {src}")
+                        response = requests.get(src, stream=True, timeout=10)
+                        if response.status_code == 200:
+                            # Определяем расширение файла из Content-Type или URL
+                            content_type = response.headers.get('Content-Type', '')
+                            ext = mimetypes.guess_extension(content_type) or '.png'
+                            if ext == '.jpe':
+                                ext = '.jpg'
+                            
+                            # Сохраняем изображение во временную директорию
+                            img_path = os.path.join(temp_dir, f"image_{i}{ext}")
+                            with open(img_path, 'wb') as f:
+                                f.write(response.content)
+                            logger.info(f"Изображение сохранено: {img_path}")
+                        else:
+                            logger.warning(f"Не удалось загрузить изображение, статус: {response.status_code}")
+                    
+                    elif src.startswith('data:image/'):
+                        # Data URL (base64)
+                        logger.info("Обработка Data URL изображения")
+                        try:
+                            header, encoded = src.split(",", 1)
+                            content_type = header.split(";")[0].split(":")[1]
+                            ext = mimetypes.guess_extension(content_type) or '.png'
+                            if ext == '.jpe':
+                                ext = '.jpg'
+                            
+                            # Декодируем base64 и сохраняем изображение
+                            img_path = os.path.join(temp_dir, f"image_{i}{ext}")
+                            with open(img_path, 'wb') as f:
+                                f.write(base64.b64decode(encoded))
+                            logger.info(f"Base64 изображение сохранено: {img_path}")
+                        except Exception as e:
+                            logger.error(f"Ошибка при декодировании base64: {e}")
+                    
+                    elif src.startswith('/'):
+                        # Локальный путь от корня сайта
+                        logger.info(f"Обработка локального пути: {src}")
+                        
+                        # Если путь начинается с /media/, используем MEDIA_ROOT
+                        if src.startswith('/media/'):
+                            file_path = os.path.join(settings.MEDIA_ROOT, src[7:])
+                        # Иначе пробуем относительно BASE_DIR
+                        else:
+                            file_path = os.path.join(settings.BASE_DIR, src[1:])
+                        
+                        if os.path.exists(file_path):
+                            # Копируем файл во временную директорию
+                            ext = os.path.splitext(file_path)[1] or '.png'
+                            img_path = os.path.join(temp_dir, f"image_{i}{ext}")
+                            with open(file_path, 'rb') as src_file, open(img_path, 'wb') as dst_file:
+                                dst_file.write(src_file.read())
+                            logger.info(f"Локальное изображение скопировано: {img_path}")
+                        else:
+                            # Если файл не найден, пробуем построить URL и загрузить через HTTP
+                            try:
+                                full_url = f"http://localhost:8000{src}"
+                                logger.info(f"Пробую загрузить через HTTP: {full_url}")
+                                response = requests.get(full_url, stream=True, timeout=10)
+                                if response.status_code == 200:
+                                    content_type = response.headers.get('Content-Type', '')
+                                    ext = mimetypes.guess_extension(content_type) or '.png'
+                                    if ext == '.jpe':
+                                        ext = '.jpg'
+                                    
+                                    img_path = os.path.join(temp_dir, f"image_{i}{ext}")
+                                    with open(img_path, 'wb') as f:
+                                        f.write(response.content)
+                                    logger.info(f"Изображение загружено через HTTP: {img_path}")
+                                else:
+                                    logger.warning(f"Не удалось загрузить через HTTP, статус: {response.status_code}")
+                            except Exception as e:
+                                logger.error(f"Ошибка при HTTP загрузке: {e}")
+                    
+                    # Если удалось загрузить изображение, сохраняем информацию
+                    if img_path and os.path.exists(img_path):
+                        images_map[img_id] = img_path
+                        # НЕ заменяем тег img на плейсхолдер, а добавляем к нему атрибут data-img-id
+                        img['data-img-id'] = img_id
+                
+                except Exception as e:
+                    logger.error(f"Ошибка при обработке изображения {src}: {e}", exc_info=True)
+            
+            # Преобразуем модифицированный HTML в строку
+            modified_html = str(soup)
+            
+            # Создаем парсер htmldocx
+            parser = HtmlToDocx()
+            parser.table_style = 'TableGrid'
+            
+            # Добавляем HTML в документ
+            parser.add_html_to_document(modified_html, docx_document)
+            
+            # После добавления HTML, заменяем изображения
+            for paragraph in docx_document.paragraphs:
+                # Проверяем, содержит ли параграф изображение
+                img_id_match = re.search(r'data-img-id="(IMG_PLACEHOLDER_\d+)"', paragraph.text)
+                if img_id_match:
+                    img_id = img_id_match.group(1)
+                    img_path = images_map.get(img_id)
+                    
+                    if img_path and os.path.exists(img_path):
+                        logger.info(f"Заменяю изображение с ID {img_id} на {img_path}")
+                        
+                        # Сохраняем текст до и после тега изображения
+                        full_text = paragraph.text
+                        img_tag_pattern = r'<img[^>]*data-img-id="' + img_id + r'"[^>]*>'
+                        img_tag_match = re.search(img_tag_pattern, full_text)
+                        
+                        if img_tag_match:
+                            before_text = full_text[:img_tag_match.start()].strip()
+                            after_text = full_text[img_tag_match.end():].strip()
+                            
+                            # Очищаем параграф
+                            paragraph.clear()
+                            
+                            # Добавляем текст до изображения, если он есть
+                            if before_text:
+                                paragraph.add_run(before_text)
+                            
+                            # Добавляем изображение
+                            run = paragraph.add_run()
+                            run.add_picture(img_path, width=Inches(5.0))
+                            
+                            # Добавляем текст после изображения, если он есть
+                            if after_text:
+                                paragraph.add_run(after_text)
+                        else:
+                            # Если не нашли точное положение тега, просто добавляем изображение
+                            # и сохраняем весь текст, очищенный от HTML тегов
+                            clean_text = re.sub(r'<[^>]*>', '', full_text).strip()
+                            paragraph.clear()
+                            
+                            if clean_text:
+                                paragraph.add_run(clean_text)
+                                
+                            # Добавляем изображение в новый параграф
+                            p = docx_document.add_paragraph()
+                            run = p.add_run()
+                            run.add_picture(img_path, width=Inches(5.0))
+                    else:
+                        logger.warning(f"Не удалось найти изображение для ID {img_id}")
+                        
+                        # Очищаем текст от HTML тегов
+                        clean_text = re.sub(r'<[^>]*>', '', paragraph.text).strip()
+                        if clean_text:
+                            paragraph.text = clean_text
+                
+                # Для параграфов без изображений, очищаем от HTML тегов
+                elif '<' in paragraph.text and '>' in paragraph.text:
+                    clean_text = re.sub(r'<[^>]*>', '', paragraph.text).strip()
+                    if clean_text:
+                        paragraph.text = clean_text
+            
+            logger.info("HTML успешно преобразован и добавлен в документ")
+    
     except Exception as e:
-        logger.error(f"Ошибка при обработке HTML с помощью html2docx: {e}", exc_info=True)
+        logger.error(f"Ошибка при обработке HTML: {e}", exc_info=True)
         # В случае ошибки добавляем просто текст как запасной вариант
         try:
-            from bs4 import BeautifulSoup # Локальный импорт для запасного варианта
             plain_text = BeautifulSoup(html_content, 'html.parser').get_text()
             docx_document.add_paragraph(f"[Ошибка конвертации HTML, вставлен как текст]:\n{plain_text}")
         except Exception as fallback_e:
@@ -496,6 +746,23 @@ def main_export_docx(request, pk):
             process_html_to_docx(document.data, docx)
         else:
             docx.add_paragraph("Документ не содержит данных")
+        
+        # Добавляем раздел "Работа с источниками" и список литературы
+        docx.add_paragraph("", style='Normal')  # Пустая строка для разделения
+        heading = docx.add_paragraph("1.5 Работа с источниками", style='Heading 2')
+        
+        # Добавляем описание функционала работы с источниками
+        p1 = docx.add_paragraph(style='Normal')
+        p1.add_run("• Ввод DOI → Получение метаданных через CrossRef API")
+        
+        p2 = docx.add_paragraph(style='Normal')
+        p2.add_run("• Автоматическая генерация библиографической ссылки")
+        
+        p3 = docx.add_paragraph(style='Normal')
+        p3.add_run("• Список литературы в формате ГОСТ 7.1-2003")
+        
+        # Добавляем список литературы
+        add_references_section(docx, document)
             
         # Добавляем нумерацию страниц
         add_page_numbers(docx)
@@ -538,7 +805,7 @@ def main_export_pdf(request, pk):
     Returns:
         HttpResponse: Ответ с PDF файлом
     """
-    logger.info(f"Начат экспорт документа Main (ID: {pk}) в PDF (ДИАГНОСТИКА - ЭТАП 2)") 
+    logger.info(f"Начат экспорт документа Main (ID: {pk}) в PDF") 
     
     com_initialized = False
     if pythoncom:
@@ -555,8 +822,8 @@ def main_export_pdf(request, pk):
         logger.info(f"Документ найден: {document_obj.title}")
         
         with tempfile.TemporaryDirectory() as temp_dir:
-            docx_path = os.path.join(temp_dir, f"temp_{pk}_diag2.docx") 
-            pdf_path = os.path.join(temp_dir, f"temp_{pk}_diag2.pdf")
+            docx_path = os.path.join(temp_dir, f"temp_{pk}.docx") 
+            pdf_path = os.path.join(temp_dir, f"temp_{pk}.pdf")
             
             template_name = WORK_TYPE_TEMPLATES.get(document_obj.work_type, 'diplo_project')
             template_path = get_docx_template(template_name)
@@ -594,35 +861,61 @@ def main_export_pdf(request, pk):
                 'reviewer_position': getattr(document_obj, 'reviewer_position', ''),
                 'factory_supervisor': document_obj.factory_supervisor or '',
             }
-            logger.info("Заполнение шаблона через DocxTemplate (ДИАГНОСТИКА - ЭТАП 2)")
+            logger.info("Заполнение шаблона через DocxTemplate")
             doc_template.render(context)
             
-            # --- НАЧАЛО БЛОКА ДИАГНОСТИКИ ЭТАП 2: --- 
-            # Сохраняем результат DocxTemplate НАПРЯМУЮ в файл, минуя Document(buffer)
-            logger.info(f"ДИАГНОСТИКА - ЭТАП 2: Сохранение результата DocxTemplate напрямую в {docx_path}")
-            doc_template.save(docx_path) # <--- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ДЛЯ ДИАГНОСТИКИ
-            # --- КОНЕЦ БЛОКА ДИАГНОСТИКИ ЭТАП 2 --- 
+            # Сохраняем результат DocxTemplate в файл
+            logger.info(f"Сохранение результата DocxTemplate в {docx_path}")
+            doc_template.save(docx_path)
             
-            # 6. Конвертация в PDF
-            logger.info(f"Конвертация DOCX в PDF из файла: {docx_path} (ДИАГНОСТИКА - ЭТАП 2)")
+            # Загружаем документ для добавления содержимого и стилей
+            docx = Document(docx_path)
+            
+            # Проверяем и создаем базовые стили
+            ensure_basic_styles(docx)
+            
+            # Применяем стили форматирования на основе стандарта
+            if document_obj.standart:
+                logger.info(f"Применение стилей форматирования для стандарта: {document_obj.standart}")
+                apply_document_formatting(docx, document_obj.standart)
+            
+            # Добавляем содержимое документа
+            if document_obj.data:
+                logger.info("Добавление содержимого документа")
+                process_html_to_docx(document_obj.data, docx)
+            else:
+                docx.add_paragraph("Документ не содержит данных")
+            
+            
+            # Добавляем список литературы
+            add_references_section(docx, document_obj)
+                
+            # Добавляем нумерацию страниц
+            add_page_numbers(docx)
+            
+            # Сохраняем обновленный документ
+            docx.save(docx_path)
+            
+            # Конвертация в PDF
+            logger.info(f"Конвертация DOCX в PDF из файла: {docx_path}")
             convert(docx_path, pdf_path)
-            logger.info(f"PDF файл создан: {pdf_path} (ДИАГНОСТИКА - ЭТАП 2)")
+            logger.info(f"PDF файл создан: {pdf_path}")
             
             safe_filename = slugify(document_obj.document_name or document_obj.title or "document")
             if not safe_filename:
                 safe_filename = f"document_{pk}"
-            filename = f"{safe_filename}_diag2.pdf" 
+            filename = f"{safe_filename}.pdf" 
             
             with open(pdf_path, 'rb') as pdf_file:
                 response = HttpResponse(pdf_file.read(), content_type='application/pdf')
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 
-                logger.info(f"Экспорт документа Main в PDF успешно завершен. Имя файла: {filename} (ДИАГНОСТИКА - ЭТАП 2)")
+                logger.info(f"Экспорт документа Main в PDF успешно завершен. Имя файла: {filename}")
                 return response
                 
     except Exception as e:
-        logger.error(f"Ошибка при экспорте документа Main в PDF (ДИАГНОСТИКА - ЭТАП 2): {e}", exc_info=True)
-        messages.error(request, f"Ошибка при экспорте документа (диагностика - этап 2): {str(e)}")
+        logger.error(f"Ошибка при экспорте документа Main в PDF: {e}", exc_info=True)
+        messages.error(request, f"Ошибка при экспорте документа: {str(e)}")
         return redirect('documents:main_detail', pk=pk)
     finally:
         if com_initialized:
@@ -631,3 +924,194 @@ def main_export_pdf(request, pk):
                 logger.info("COM успешно деинициализирован.")
             except Exception as e:
                 logger.warning(f"Ошибка при деинициализации COM: {e}")
+
+def get_metadata_from_doi(doi):
+    """
+    Получает метаданные публикации по DOI через CrossRef API.
+    
+    Args:
+        doi (str): DOI публикации
+        
+    Returns:
+        dict: Словарь с метаданными или None в случае ошибки
+    """
+    logger.info(f"Получение метаданных для DOI: {doi}")
+    
+    try:
+        # Формируем URL для запроса к CrossRef API
+        url = f"https://api.crossref.org/works/{doi}"
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": "GostDocsApp/1.0 (mailto:admin@example.com)"
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'message' in data:
+                logger.info(f"Метаданные для DOI {doi} успешно получены")
+                return data['message']
+            else:
+                logger.warning(f"В ответе CrossRef API отсутствует поле 'message' для DOI {doi}")
+                return None
+        else:
+            logger.warning(f"Ошибка при запросе к CrossRef API для DOI {doi}: {response.status_code}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Ошибка при получении метаданных для DOI {doi}: {e}", exc_info=True)
+        return None
+
+def format_citation_gost(metadata):
+    """
+    Форматирует библиографическую ссылку по ГОСТ 7.1-2003 на основе метаданных CrossRef.
+    
+    Args:
+        metadata (dict): Метаданные публикации из CrossRef API
+        
+    Returns:
+        str: Отформатированная библиографическая ссылка
+    """
+    try:
+        # Получаем основные данные из метаданных
+        title = metadata.get('title', [''])[0] if isinstance(metadata.get('title', []), list) else metadata.get('title', '')
+        
+        # Получаем авторов
+        authors = []
+        if 'author' in metadata:
+            for author in metadata['author']:
+                given = author.get('given', '')
+                family = author.get('family', '')
+                if given and family:
+                    # Формат: Фамилия И.О.
+                    initials = ''.join([name[0] + '.' for name in given.split()])
+                    authors.append(f"{family} {initials}")
+                elif family:
+                    authors.append(family)
+        
+        # Формируем строку авторов по ГОСТ
+        authors_str = ""
+        if authors:
+            if len(authors) == 1:
+                authors_str = authors[0]
+            elif len(authors) <= 3:
+                authors_str = ", ".join(authors)
+            else:
+                authors_str = f"{authors[0]} и др."
+        
+        # Получаем данные о журнале или издательстве
+        container_title = metadata.get('container-title', [''])[0] if isinstance(metadata.get('container-title', []), list) else metadata.get('container-title', '')
+        publisher = metadata.get('publisher', '')
+        
+        # Получаем данные о выпуске
+        volume = metadata.get('volume', '')
+        issue = metadata.get('issue', '')
+        page = metadata.get('page', '')
+        
+        # Получаем год публикации
+        year = ""
+        if 'published' in metadata and 'date-parts' in metadata['published']:
+            year = str(metadata['published']['date-parts'][0][0]) if metadata['published']['date-parts'][0] else ""
+        
+        # Формируем ссылку по ГОСТ 7.1-2003
+        citation = ""
+        
+        # Добавляем авторов
+        if authors_str:
+            citation += f"{authors_str}. "
+        
+        # Добавляем название
+        if title:
+            citation += f"{title}"
+            # Добавляем точку, если название не заканчивается знаком препинания
+            if not title[-1] in ['.', '!', '?']:
+                citation += ". "
+            else:
+                citation += " "
+        
+        # Добавляем данные о журнале/издательстве
+        if container_title:
+            citation += f"// {container_title}. "
+        elif publisher:
+            citation += f"// {publisher}. "
+        
+        # Добавляем год
+        if year:
+            citation += f"{year}. "
+        
+        # Добавляем данные о выпуске
+        if volume:
+            citation += f"Т. {volume}"
+            if issue or page:
+                citation += ", "
+        
+        if issue:
+            citation += f"№ {issue}"
+            if page:
+                citation += ", "
+        
+        if page:
+            citation += f"С. {page}"
+        
+        # Добавляем DOI
+        if 'DOI' in metadata:
+            citation += f". DOI: {metadata['DOI']}"
+        
+        return citation
+        
+    except Exception as e:
+        logger.error(f"Ошибка при форматировании ссылки по ГОСТ: {e}", exc_info=True)
+        return f"Ошибка форматирования ссылки: {str(e)}"
+
+def add_references_section(docx_document, document_obj):
+    """
+    Добавляет раздел со списком литературы в документ.
+    
+    Args:
+        docx_document (Document): Документ python-docx
+        document_obj: Объект документа из базы данных
+    """
+    logger.info("Добавление раздела со списком литературы")
+    
+    try:
+        # Добавляем заголовок раздела
+        docx_document.add_paragraph("", style='Normal')  # Пустая строка перед разделом
+        heading = docx_document.add_paragraph("Список литературы", style='Heading 1')
+        heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Получаем список DOI из документа
+        # Предполагаем, что DOI хранятся в поле references_doi как строка с разделителями
+        doi_list = []
+        if hasattr(document_obj, 'references_doi') and document_obj.references_doi:
+            # Разбиваем строку на отдельные DOI
+            doi_list = [doi.strip() for doi in document_obj.references_doi.split(',') if doi.strip()]
+        
+        # Если список DOI пуст, добавляем информационное сообщение
+        if not doi_list:
+            docx_document.add_paragraph("Список литературы не содержит источников.", style='Normal')
+            return
+        
+        # Обрабатываем каждый DOI и добавляем ссылку в документ
+        for i, doi in enumerate(doi_list, 1):
+            # Получаем метаданные по DOI
+            metadata = get_metadata_from_doi(doi)
+            
+            if metadata:
+                # Форматируем ссылку по ГОСТ
+                citation = format_citation_gost(metadata)
+                # Добавляем ссылку в документ с номером
+                p = docx_document.add_paragraph(style='Normal')
+                p.add_run(f"{i}. ").bold = True
+                p.add_run(citation)
+            else:
+                # Если не удалось получить метаданные, добавляем только DOI
+                p = docx_document.add_paragraph(style='Normal')
+                p.add_run(f"{i}. ").bold = True
+                p.add_run(f"DOI: {doi} (не удалось получить метаданные)")
+        
+        logger.info(f"Добавлено {len(doi_list)} источников в список литературы")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении раздела со списком литературы: {e}", exc_info=True)
+        docx_document.add_paragraph("Ошибка при формировании списка литературы", style='Normal')

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load document_filters %}
 
 {% block title %}{{ main.title }} | Просмотр документа{% endblock %}
 
@@ -468,6 +469,45 @@
         {% endautoescape %}
       </div>
       {% endif %}
+      
+      <!-- Карточка для управления источниками (DOI) -->
+      <div class="info-card mb-4">
+        <h2 class="card-header">
+          <i class="bi bi-journal-richtext"></i> Источники (DOI)
+        </h2>
+        
+        <div class="p-3">
+          <form method="post" action="{% url 'documents:update_references' main.pk %}" class="mb-3">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label for="references_doi" class="form-label">DOI источников (через запятую)</label>
+              <textarea class="form-control" id="references_doi" name="references_doi" rows="3" placeholder="Например: 10.1000/xyz123, 10.1000/abc456">{{ main.references_doi }}</textarea>
+              <div class="form-text">Введите DOI источников через запятую. При экспорте документа они будут автоматически преобразованы в библиографические ссылки по ГОСТ 7.1-2003.</div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save"></i> Сохранить источники
+            </button>
+          </form>
+          
+          {% if main.references_doi %}
+          <hr>
+          <h5 class="mb-3">Список источников:</h5>
+          <ul class="list-group">
+            {% for doi in main.references_doi|split:"," %}
+              {% with doi_stripped=doi|strip %}
+              {% if doi_stripped %}
+              <li class="list-group-item">
+                <a href="https://doi.org/{{ doi_stripped }}" target="_blank" class="text-decoration-none">
+                  <i class="bi bi-link-45deg"></i> {{ doi_stripped }}
+                </a>
+              </li>
+              {% endif %}
+              {% endwith %}
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      </div>
       
       <!-- Кнопки действий -->
       <div class="d-flex flex-wrap gap-2 action-buttons">

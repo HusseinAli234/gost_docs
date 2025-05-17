@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from ckeditor_uploader.fields import RichTextUploadingField
+from django.utils import timezone
 
 
 class Document_main(models.Model):
@@ -55,6 +56,8 @@ class Document_main(models.Model):
                                             'заключение, \n'
                                             'список использованных источников, \n'
                                             'приложения. \n')
+
+    references_doi = models.TextField(verbose_name='DOI источников (через запятую)', blank=True, null=True, help_text='Введите DOI источников через запятую, например: 10.1000/xyz123, 10.1000/abc456')
 
     class Meta:
         ordering = ['-created_at']
