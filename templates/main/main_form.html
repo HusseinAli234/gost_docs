@@ -296,6 +296,83 @@
                   {% endif %}
                 </div>
                 
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.specialty_code_full.id_for_label }}" class="form-label">{{ form.specialty_code_full.label }}</label>
+                  {{ form.specialty_code_full }}
+                  {% if form.specialty_code_full.help_text %}
+                    <div class="form-text">{{ form.specialty_code_full.help_text }}</div>
+                  {% endif %}
+                  {% if form.specialty_code_full.errors %}
+                    <div class="invalid-feedback d-block">{{ form.specialty_code_full.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.record_number.id_for_label }}" class="form-label">{{ form.record_number.label }}</label>
+                  {{ form.record_number }}
+                  {% if form.record_number.help_text %}
+                    <div class="form-text">{{ form.record_number.help_text }}</div>
+                  {% endif %}
+                  {% if form.record_number.errors %}
+                    <div class="invalid-feedback d-block">{{ form.record_number.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.head_of_department.id_for_label }}" class="form-label">{{ form.head_of_department.label }}</label>
+                  {{ form.head_of_department }}
+                  {% if form.head_of_department.help_text %}
+                    <div class="form-text">{{ form.head_of_department.help_text }}</div>
+                  {% endif %}
+                  {% if form.head_of_department.errors %}
+                    <div class="invalid-feedback d-block">{{ form.head_of_department.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.supervisor_position.id_for_label }}" class="form-label">{{ form.supervisor_position.label }}</label>
+                  {{ form.supervisor_position }}
+                  {% if form.supervisor_position.help_text %}
+                    <div class="form-text">{{ form.supervisor_position.help_text }}</div>
+                  {% endif %}
+                  {% if form.supervisor_position.errors %}
+                    <div class="invalid-feedback d-block">{{ form.supervisor_position.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.reviewer.id_for_label }}" class="form-label">{{ form.reviewer.label }}</label>
+                  {{ form.reviewer }}
+                  {% if form.reviewer.help_text %}
+                    <div class="form-text">{{ form.reviewer.help_text }}</div>
+                  {% endif %}
+                  {% if form.reviewer.errors %}
+                    <div class="invalid-feedback d-block">{{ form.reviewer.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.reviewer_position.id_for_label }}" class="form-label">{{ form.reviewer_position.label }}</label>
+                  {{ form.reviewer_position }}
+                  {% if form.reviewer_position.help_text %}
+                    <div class="form-text">{{ form.reviewer_position.help_text }}</div>
+                  {% endif %}
+                  {% if form.reviewer_position.errors %}
+                    <div class="invalid-feedback d-block">{{ form.reviewer_position.errors }}</div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-md-6 form-field">
+                  <label for="{{ form.factory_supervisor.id_for_label }}" class="form-label">{{ form.factory_supervisor.label }}</label>
+                  {{ form.factory_supervisor }}
+                  {% if form.factory_supervisor.help_text %}
+                    <div class="form-text">{{ form.factory_supervisor.help_text }}</div>
+                  {% endif %}
+                  {% if form.factory_supervisor.errors %}
+                    <div class="invalid-feedback d-block">{{ form.factory_supervisor.errors }}</div>
+                  {% endif %}
+                </div>
+                
                 <div class="col-12 form-field">
                   <label for="{{ form.consultants.id_for_label }}" class="form-label">{{ form.consultants.label }}</label>
                   {{ form.consultants }}

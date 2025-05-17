@@ -1,833 +1,633 @@
-from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
-from io import BytesIO
-import re
-import requests
-import tempfile
-import os
-import base64
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect
+from django.utils.text import slugify
 from django.conf import settings
+from django.contrib import messages
 
+from io import BytesIO
+import os
+import logging
+import tempfile
+import base64
+import re
+# Удаляем BeautifulSoup, так как html2docx будет парсить HTML
+# from bs4 import BeautifulSoup 
+import requests
 from docx import Document
-from docx.shared import Pt, Cm, RGBColor, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.shared import Pt, Inches, Cm, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.style import WD_STYLE_TYPE
-from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx2pdf import convert
+# Импорт DocxTemplate для работы с шаблонами
+from docxtpl import DocxTemplate
 
-from documents.models.gost import Document as GostDocument
+# Импортируем html2docx правильно
+from htmldocx import HtmlToDocx
+
+# Попытка импортировать pythoncom для Windows
+try:
+    import pythoncom
+except ImportError:
+    pythoncom = None # Устанавливаем в None, если импорт не удался (не Windows)
+
 from documents.models.sto import Document_sto
+from documents.models.main import Document_main
 
+# Импортируем модуль AI для получения стилей форматирования
+import ai
+
+# Настройка логгера
+logger = logging.getLogger(__name__)
+
+# Отображение типов работ на названия шаблонов
+WORK_TYPE_TEMPLATES = {
+    'MAG_DIPLOMA': 'magitr_dissertation',
+    'DIPLOMA': 'diplom_work',
+    'BACHELOR': 'bachelor_work',
+    'COURSE': 'kursovaya',
+    'CALC_GRAPH': 'diplo_project',  # используем общий шаблон
+    'PRACTICE': 'otchet_praktika',
+    'LAB': 'laba_work',
+    'REF': 'referat',
+}
+
+# Импорты для низкоуровневой работы с OXML элементами
+from docx.oxml.text.paragraph import CT_P
+from docx.oxml.table import CT_Tbl
 
 def clean_html(html_content):
-    """Удаляет HTML-теги из текста (устаревшая функция)"""
+    """Очищает HTML от тегов и возвращает только текст"""
     if not html_content:
         return ""
-    return re.sub(r'<.*?>', '', html_content)
+    return BeautifulSoup(html_content, 'html.parser').get_text()
 
-
-def html_to_docx(html_content, docx_document, style='Normal'):
+def process_html_to_docx(html_content, docx_document):
     """
-    Преобразует HTML в форматированный DOCX с поддержкой изображений и таблиц
+    Преобразует HTML-контент в DOCX и добавляет его в существующий документ.
+    Использует библиотеку html2docx для конвертации.
     
     Args:
-        html_content (str): HTML-контент для преобразования
-        docx_document (Document): Документ python-docx, куда будет добавлен контент
-        style (str): Имя стиля для основного текста
+        html_content (str): HTML-контент для преобразования.
+        docx_document (Document): Существующий объект python-docx, куда будет добавлен контент.
     """
     if not html_content:
+        logger.info("HTML контент пуст, нечего добавлять.")
+        return
+
+    logger.info(f"Обработка HTML контента длиной {len(html_content)} символов с использованием html2docx")
+    
+    try:
+        # Создаем парсер html2docx
+        parser = HtmlToDocx()
+        
+        # Добавляем HTML в существующий документ
+        parser.add_html_to_document(html_content, docx_document)
+        
+        logger.info("HTML успешно преобразован и добавлен в документ с помощью html2docx")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обработке HTML с помощью html2docx: {e}", exc_info=True)
+        # В случае ошибки добавляем просто текст как запасной вариант
+        try:
+            from bs4 import BeautifulSoup # Локальный импорт для запасного варианта
+            plain_text = BeautifulSoup(html_content, 'html.parser').get_text()
+            docx_document.add_paragraph(f"[Ошибка конвертации HTML, вставлен как текст]:\n{plain_text}")
+        except Exception as fallback_e:
+            logger.error(f"Ошибка при аварийной вставке HTML как текста: {fallback_e}")
+            docx_document.add_paragraph("[Ошибка конвертации HTML, не удалось вставить даже как текст]")
+
+def get_docx_template(template_name):
+    """
+    Возвращает путь к шаблону DOCX.
+    
+    Args:
+        template_name (str): Название шаблона
+        
+    Returns:
+        str: Путь к файлу шаблона или None, если шаблон не найден
+    """
+    template_path = os.path.join(settings.BASE_DIR, 'templates', 'docx', f"{template_name}.docx")
+    if os.path.exists(template_path):
+        logger.info(f"Шаблон найден: {template_path}")
+        return template_path
+    
+    logger.warning(f"Шаблон не найден: {template_path}")
+    # Используем стандартный шаблон, если нужный не найден
+    default_path = os.path.join(settings.BASE_DIR, 'templates', 'docx', 'diplo_project.docx')
+    if os.path.exists(default_path):
+        logger.info(f"Используется стандартный шаблон: {default_path}")
+        return default_path
+    
+    logger.error("Стандартный шаблон не найден")
+    return None
+
+def ensure_basic_styles(docx):
+    """
+    Проверяет наличие и создает базовые стили для документа.
+    
+    Args:
+        docx (Document): Документ python-docx
+    """
+    logger.info("Проверка наличия базовых стилей в документе")
+    
+    # Проверяем и создаем стиль Heading 1, если его нет
+    if 'Heading 1' not in docx.styles:
+        logger.info("Создание стиля 'Heading 1'")
+        try:
+            heading1_style = docx.styles.add_style('Heading 1', WD_STYLE_TYPE.PARAGRAPH)
+            heading1_style.font.name = 'Times New Roman'
+            heading1_style.font.size = Pt(16)
+            heading1_style.font.bold = True
+            heading1_style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            heading1_style.paragraph_format.space_before = Pt(12)
+            heading1_style.paragraph_format.space_after = Pt(6)
+            logger.info("Стиль 'Heading 1' успешно создан")
+        except Exception as e:
+            logger.error(f"Ошибка при создании стиля 'Heading 1': {e}")
+    
+    # Проверяем и создаем стиль Normal, если его нет
+    if 'Normal' not in docx.styles:
+        logger.info("Создание стиля 'Normal'")
+        try:
+            normal_style = docx.styles.add_style('Normal', WD_STYLE_TYPE.PARAGRAPH)
+            normal_style.font.name = 'Times New Roman'
+            normal_style.font.size = Pt(12)
+            normal_style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            normal_style.paragraph_format.first_line_indent = Pt(15)
+            normal_style.paragraph_format.space_after = Pt(6)
+            logger.info("Стиль 'Normal' успешно создан")
+        except Exception as e:
+            logger.error(f"Ошибка при создании стиля 'Normal': {e}")
+    
+    # Создаем другие необходимые стили
+    for style_name, params in {
+        'Heading 2': {'size': Pt(14), 'bold': True, 'align': WD_ALIGN_PARAGRAPH.LEFT},
+        'Heading 3': {'size': Pt(13), 'bold': True, 'align': WD_ALIGN_PARAGRAPH.LEFT}
+    }.items():
+        if style_name not in docx.styles:
+            logger.info(f"Создание стиля '{style_name}'")
+            try:
+                style = docx.styles.add_style(style_name, WD_STYLE_TYPE.PARAGRAPH)
+                style.font.name = 'Times New Roman'
+                style.font.size = params['size']
+                style.font.bold = params['bold']
+                style.paragraph_format.alignment = params['align']
+                style.paragraph_format.space_before = Pt(6)
+                style.paragraph_format.space_after = Pt(6)
+                logger.info(f"Стиль '{style_name}' успешно создан")
+            except Exception as e:
+                logger.error(f"Ошибка при создании стиля '{style_name}': {e}")
+    
+    # Добавляем стили для списков, которые использует html2docx
+    list_styles = ['List Bullet', 'List Number']
+    for list_style_name in list_styles:
+        if list_style_name not in docx.styles:
+            logger.info(f"Создание стиля '{list_style_name}'")
+            try:
+                style = docx.styles.add_style(list_style_name, WD_STYLE_TYPE.PARAGRAPH)
+                style.font.name = 'Times New Roman'
+                style.font.size = Pt(12)
+                style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                style.paragraph_format.left_indent = Pt(18)  # Отступ слева для списка
+                style.paragraph_format.first_line_indent = Pt(-18)  # Отрицательный отступ первой строки (для маркера)
+                style.paragraph_format.space_after = Pt(6)
+                logger.info(f"Стиль '{list_style_name}' успешно создан")
+            except Exception as e:
+                logger.error(f"Ошибка при создании стиля '{list_style_name}': {e}")
+
+def replace_document_fields(docx, replacements):
+    """
+    Заменяет поля в шаблоне документа их значениями с сохранением форматирования.
+    При замене поля на значение добавляет нужное количество пробелов для сохранения
+    размера строки, если значение короче плейсхолдера.
+    
+    Args:
+        docx (Document): Документ python-docx
+        replacements (dict): Словарь с заменами {поле: значение}
+    """
+    logger.info("Замена полей в шаблоне с сохранением форматирования")
+    
+    # Заменяем поля в параграфах более умным способом
+    for paragraph in docx.paragraphs:
+        # Проверяем, содержит ли параграф какое-либо поле
+        for field, value in replacements.items():
+            if field in paragraph.text:
+                # Преобразуем значение поля в строку и обрабатываем специальные случаи
+                value_str = str(value) if value is not None else ""
+                
+                # Вычисляем разницу в длине между полем и значением
+                length_diff = len(field) - len(value_str)
+                
+                # Если значение короче поля, добавляем пробелы для компенсации
+                if length_diff > 0:
+                    # Добавляем пробелы, чтобы сохранить форматирование
+                    value_str = value_str + ' ' * length_diff
+                
+                # Заменяем поле на значение с компенсированной длиной
+                paragraph.text = paragraph.text.replace(field, value_str)
+    
+    # Заменяем поля в таблицах с тем же подходом
+    for table in docx.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    for field, value in replacements.items():
+                        if field in paragraph.text:
+                            # Преобразуем значение поля в строку
+                            value_str = str(value) if value is not None else ""
+                            
+                            # Вычисляем разницу в длине
+                            length_diff = len(field) - len(value_str)
+                            
+                            # Если значение короче поля, добавляем пробелы
+                            if length_diff > 0:
+                                value_str = value_str + ' ' * length_diff
+                            
+                            # Заменяем поле на компенсированное значение
+                            paragraph.text = paragraph.text.replace(field, value_str)
+
+def apply_document_formatting(docx, standard_name):
+    """
+    Применяет стили форматирования к документу на основе стандарта.
+    
+    Args:
+        docx (Document): Документ python-docx
+        standard_name (str): Название стандарта (например, "ГОСТ 7.32-2017")
+    """
+    if not standard_name:
+        logger.warning("Стандарт не указан, используются стили по умолчанию")
         return
     
-    soup = BeautifulSoup(html_content, 'html.parser')
+    logger.info(f"Получение стилей форматирования для стандарта: {standard_name}")
     
-    # Функция для обработки текста с форматированием
-    def process_text_with_formatting(element, paragraph):
-        if element.name == 'strong' or element.name == 'b':
-            run = paragraph.add_run(element.get_text())
-            run.bold = True
-        elif element.name == 'em' or element.name == 'i':
-            run = paragraph.add_run(element.get_text())
-            run.italic = True
-        elif element.name == 'u':
-            run = paragraph.add_run(element.get_text())
-            run.underline = True
-        elif element.name == 'a':
-            url = element.get('href', '')
-            text = element.get_text() or url
-            run = paragraph.add_run(text)
-            run.underline = True
-            run.font.color.rgb = RGBColor(0, 0, 255)  # Синий цвет для ссылок
-        else:
-            # Рекурсивная обработка вложенных элементов
-            for child in element.children:
-                if isinstance(child, str):
-                    paragraph.add_run(child)
+    try:
+        # Получаем стили форматирования от AI
+        formatting = ai.generate(standard_name)
+        
+        if "error" in formatting:
+            logger.warning(f"Не удалось получить стили для стандарта {standard_name}: {formatting['error']}")
+            return
+            
+        logger.info(f"Стили для стандарта {standard_name} получены успешно")
+        
+        # Применяем стиль шрифта для основного текста (стиль Normal)
+        if "font" in formatting:
+            font_info = formatting["font"]
+            # print(font_info) # Закомментируем отладочный вывод
+            
+            if "Normal" not in docx.styles:
+                logger.info("Создание стиля 'Normal'")
+                normal_style = docx.styles.add_style('Normal', WD_STYLE_TYPE.PARAGRAPH)
+            else:
+                normal_style = docx.styles["Normal"]
+            
+            if "family" in font_info:
+                normal_style.font.name = font_info["family"]
+                logger.info(f"Установлен шрифт: {font_info['family']}")
+            
+            if "size_pt" in font_info:
+                normal_style.font.size = Pt(font_info["size_pt"])
+                logger.info(f"Установлен размер шрифта: {font_info['size_pt']} pt")
+            
+            if "color" in font_info:
+                color_str = font_info["color"].lower()
+                if color_str == "black" or color_str == "черный":
+                    normal_style.font.color.rgb = RGBColor(0, 0, 0)
+                    logger.info(f"Установлен цвет шрифта: черный (0,0,0)")
+                # Можно добавить обработку других распространенных цветов, если AI их возвращает
+                # elif color_str == "red":
+                #     normal_style.font.color.rgb = RGBColor(255, 0, 0)
+                #     logger.info(f"Установлен цвет шрифта: красный (255,0,0)")
                 else:
-                    process_text_with_formatting(child, paragraph)
-    
-    # Обрабатываем каждый элемент верхнего уровня
-    for element in soup.children:
-        if isinstance(element, str) and element.strip():
-            # Простой текст
-            p = docx_document.add_paragraph(style=style)
-            p.add_run(element.strip())
-        # Проверяем, что элемент — это тег, а не просто строка или комментарий
-        elif element.name:
-            # Параграфы
-            if element.name == 'p':
-                p = docx_document.add_paragraph(style=style)
-                for child in element.children:
-                    if isinstance(child, str):
-                        p.add_run(child)
-                    else:
-                        process_text_with_formatting(child, p)
-            
-            # Заголовки
-            elif element.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
-                level = int(element.name[1])
-                style_name = f"Heading {level}"
-                p = docx_document.add_paragraph(style=style_name)
-                p.add_run(element.get_text())
-            
-            # Списки
-            elif element.name == 'ul' or element.name == 'ol':
-                for li in element.find_all('li', recursive=False):
-                    p = docx_document.add_paragraph(style=style)
-                    if element.name == 'ul':
-                        p.style = 'List Bullet'
-                    else:
-                        p.style = 'List Number'
-                    
-                    for child in li.children:
-                        if isinstance(child, str):
-                            p.add_run(child)
-                        else:
-                            process_text_with_formatting(child, p)
-            
-            # Изображения
-            elif element.name == 'img':
-                img_src = element.get('src', '')
-                print(f"Обработка изображения со src: {img_src[:50]}{'...' if len(img_src) > 50 else ''}")
-                
-                if img_src:
+                    logger.warning(f"Неизвестный или неподдерживаемый цвет шрифта '{font_info['color']}', используется цвет по умолчанию (черный).")
+                    normal_style.font.color.rgb = RGBColor(0, 0, 0) # По умолчанию черный
+        
+        # Применяем настройки отступов к документу
+        if "margins_mm" in formatting:
+            margins = formatting["margins_mm"]
+            section = docx.sections[0]
+            if "top" in margins:
+                section.top_margin = Cm(margins["top"] / 10)
+                logger.info(f"Установлен верхний отступ: {margins['top']} мм")
+            if "bottom" in margins:
+                section.bottom_margin = Cm(margins["bottom"] / 10)
+                logger.info(f"Установлен нижний отступ: {margins['bottom']} мм")
+            if "left" in margins:
+                section.left_margin = Cm(margins["left"] / 10)
+                logger.info(f"Установлен левый отступ: {margins['left']} мм")
+            if "right" in margins:
+                section.right_margin = Cm(margins["right"] / 10)
+                logger.info(f"Установлен правый отступ: {margins['right']} мм")
+        
+        # Применяем настройки интервалов
+        if "spacing" in formatting:
+            spacing_info = formatting["spacing"]
+            if "Normal" in docx.styles:
+                normal_style = docx.styles["Normal"]
+                if "line_spacing" in spacing_info:
+                    line_spacing_str = str(spacing_info["line_spacing"]).replace(",", ".") # Замена запятой на точку
                     try:
-                        # Если изображение в формате data URL (Base64)
-                        if img_src.startswith('data:image/'):
-                            print(f"Обработка data URL изображения")
-                            try:
-                                # Извлекаем данные после префикса "data:image/XXX;base64,"
-                                header, encoded = img_src.split(",", 1)
-                                
-                                # Декодируем Base64 напрямую в байты
-                                img_data = base64.b64decode(encoded)
-                                
-                                # Создаем поток байтов и добавляем изображение напрямую
-                                image_stream = BytesIO(img_data)
-                                docx_document.add_picture(image_stream, width=Inches(5))
-                                print(f"Изображение data URL успешно добавлено в документ")
-                            except Exception as e:
-                                print(f"Ошибка при обработке data URL: {str(e)}")
-                            
-                        # Если изображение из интернета (HTTP/HTTPS) или LaTeX сервиса
-                        elif img_src.startswith('http') or 'shkolkovo.online/api/latex' in img_src or 'latex-service' in img_src:
-                            url_type = "LaTeX" if ('shkolkovo.online/api/latex' in img_src or 'latex-service' in img_src) else "HTTP"
-                            print(f"Загрузка {url_type} изображения по URL: {img_src[:30]}...")
-                            
-                            response = requests.get(img_src, stream=True)
-                            if response.status_code == 200:
-                                # Создаем поток байтов напрямую из ответа
-                                image_stream = BytesIO(response.content)
-                                
-                                # Определяем размеры изображения из атрибутов
-                                width_attr = element.get('width')
-                                if width_attr and width_attr.isdigit():
-                                    width_inches = float(width_attr) / 96
-                                    docx_document.add_picture(image_stream, width=Inches(min(width_inches, 6)))
-                                else:
-                                    docx_document.add_picture(image_stream, width=Inches(5))
-                                    
-                                print(f"Изображение {url_type} успешно добавлено в документ")
-                            else:
-                                print(f"Ошибка при загрузке изображения: HTTP {response.status_code}")
-                                p = docx_document.add_paragraph(style=style)
-                                p.add_run(f"[Изображение не найдено: {img_src[:30]}...]")
-                                
-                        # Если изображение локальное из папки media
-                        elif img_src.startswith('/media/'):
-                            print(f"Обработка загруженного изображения из media: {img_src}")
-                            # Получаем абсолютный путь к файлу
-                            media_root = settings.MEDIA_ROOT
-                            relative_path = img_src[7:]  # Убираем '/media/' из начала пути
-                            img_path = os.path.join(media_root, relative_path)
-                            
-                            print(f"Путь к файлу изображения: {img_path}")
-                            if os.path.exists(img_path):
-                                # Читаем файл напрямую в поток байтов
-                                with open(img_path, 'rb') as f:
-                                    image_bytes = f.read()
-                                
-                                image_stream = BytesIO(image_bytes)
-                                
-                                # Определяем размер изображения на основе атрибутов width и height
-                                width_attr = element.get('width')
-                                if width_attr and width_attr.isdigit():
-                                    # Преобразуем пиксели в дюймы (приблизительно)
-                                    width_inches = float(width_attr) / 96
-                                    docx_document.add_picture(image_stream, width=Inches(min(width_inches, 6)))
-                                else:
-                                    # Используем стандартную ширину 5 дюймов
-                                    docx_document.add_picture(image_stream, width=Inches(5))
-                                    
-                                print(f"Загруженное изображение успешно добавлено в документ")
-                            else:
-                                print(f"Файл не найден по пути: {img_path}")
-                                p = docx_document.add_paragraph(style=style)
-                                p.add_run(f"[Изображение не найдено: {img_src}]")
-                                
-                        # Если изображение локальное, из других источников
-                        else:
-                            print(f"Обработка локального изображения: {img_src[:50]}...")
-                            # Пробуем обработать относительный путь
-                            img_path = os.path.join(settings.MEDIA_ROOT, img_src)
-                            
-                            print(f"Путь к файлу: {img_path}")
-                            if os.path.exists(img_path):
-                                # Читаем файл напрямую в поток байтов
-                                with open(img_path, 'rb') as f:
-                                    image_bytes = f.read()
-                                
-                                image_stream = BytesIO(image_bytes)
-                                docx_document.add_picture(image_stream, width=Inches(5))
-                                print(f"Локальное изображение успешно добавлено в документ")
-                            else:
-                                # Если не удалось найти изображение как локальный файл, 
-                                # попробуем обработать как URL напрямую
-                                try:
-                                    print(f"Попытка загрузить изображение напрямую: {img_src}")
-                                    response = requests.get(img_src, allow_redirects=True)
-                                    if response.status_code == 200:
-                                        # Создаем поток байтов напрямую из ответа
-                                        image_stream = BytesIO(response.content)
-                                        docx_document.add_picture(image_stream, width=Inches(5))
-                                        print(f"Изображение успешно загружено и добавлено в документ")
-                                    else:
-                                        raise Exception(f"HTTP {response.status_code}")
-                                except Exception as e:
-                                    print(f"Ошибка при прямой загрузке изображения: {str(e)}")
-                                    p = docx_document.add_paragraph(style=style)
-                                    p.add_run(f"[Изображение не найдено: {img_src[:30]}...]")
-                    except Exception as e:
-                        print(f"Ошибка при добавлении изображения: {str(e)}")
-                        p = docx_document.add_paragraph(style=style)
-                        p.add_run(f"[Ошибка обработки изображения: {img_src[:30]}...]")
-                else:
-                    print("Элемент img не содержит атрибута src")
-            
-            # Таблицы
-            elif element.name == 'table':
-                try:
-                    rows = element.find_all('tr')
-                    if rows:
-                        # Определяем количество столбцов по первой строке
-                        cols = max(len(row.find_all(['td', 'th'])) for row in rows)
-                        if cols > 0:
-                            # Создаем таблицу в документе
-                            table = docx_document.add_table(rows=len(rows), cols=cols)
-                            table.style = 'Table Grid'
-                            table.alignment = WD_TABLE_ALIGNMENT.CENTER
-                            
-                            # Заполняем таблицу
-                            for i, row in enumerate(rows):
-                                cells = row.find_all(['td', 'th'])
-                                for j, cell in enumerate(cells):
-                                    if j < cols:  # Проверяем, что не выходим за границы
-                                        docx_cell = table.cell(i, j)
-                                        # Обрабатываем содержимое ячейки с учетом форматирования
-                                        docx_cell.text = ""  # Очищаем ячейку
-                                        p = docx_cell.paragraphs[0]
-                                        
-                                        for cell_content in cell.contents:
-                                            if isinstance(cell_content, str):
-                                                p.add_run(cell_content)
-                                            else:
-                                                # Обрабатываем форматирование и вложенные элементы
-                                                process_text_with_formatting(cell_content, p)
-                                        
-                                        # Если это заголовок таблицы
-                                        if cell.name == 'th':
-                                            for paragraph in docx_cell.paragraphs:
-                                                for run in paragraph.runs:
-                                                    run.bold = True
-                except Exception as e:
-                    print(f"Ошибка при добавлении таблицы: {str(e)}")
-                    p = docx_document.add_paragraph(style=style)
-                    p.add_run("[Ошибка при добавлении таблицы]")
-            
-            # Обработка блоков кода и цитат
-            elif element.name == 'pre' or element.name == 'code':
-                p = docx_document.add_paragraph(style=style)
-                p.paragraph_format.left_indent = Inches(0.5)
-                p.paragraph_format.right_indent = Inches(0.5)
-                code_text = element.get_text(strip=True)
-                run = p.add_run(code_text)
-                run.font.name = 'Courier New'  # Моноширинный шрифт для кода
-            
-            elif element.name == 'blockquote':
-                p = docx_document.add_paragraph(style=style)
-                p.paragraph_format.left_indent = Inches(0.5)
-                p.add_run(element.get_text(strip=True))
+                        line_spacing_val = float(line_spacing_str)
+                        # python-docx использует значения: 1.0 для одинарного, 1.5, 2.0 и т.д.
+                        normal_style.paragraph_format.line_spacing = line_spacing_val
+                        logger.info(f"Установлен межстрочный интервал: {line_spacing_val}")
+                    except ValueError:
+                        logger.error(f"Некорректное значение для межстрочного интервала: '{spacing_info['line_spacing']}'. Используется одинарный.")
+                        normal_style.paragraph_format.line_spacing = 1.0
                 
-            # Горизонтальные линии
-            elif element.name == 'hr':
-                docx_document.add_paragraph('_' * 50, style=style)
+                if "paragraph_spacing_pt" in spacing_info:
+                    try:
+                        paragraph_spacing = int(spacing_info["paragraph_spacing_pt"])
+                        normal_style.paragraph_format.space_after = Pt(paragraph_spacing)
+                        logger.info(f"Установлен интервал после абзаца: {paragraph_spacing} пт")
+                    except ValueError:
+                         logger.error(f"Некорректное значение для интервала после абзаца: '{spacing_info['paragraph_spacing_pt']}'. Используется 0.")
+                         normal_style.paragraph_format.space_after = Pt(0)
+        
+        logger.info("Стили документа успешно применены")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при применении стилей к документу: {e}", exc_info=True)
+        # В случае ошибки используем стили по умолчанию
 
+def add_page_numbers(docx):
+    """
+    Добавляет нумерацию страниц в документ в нижней части страницы по центру.
+    
+    Args:
+        docx (Document): Документ python-docx
+    """
+    logger.info("Добавление нумерации страниц")
+    
+    try:
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+        
+        section = docx.sections[0]
+        footer = section.footer
+        
+        # Очищаем существующее содержимое колонтитула
+        for p in footer.paragraphs:
+            p._element.getparent().remove(p._element)
+            p._p = None
+            p._element = None
+        
+        paragraph = footer.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Функция для создания номера страницы в Word
+        def create_element(name):
+            return OxmlElement(name)
+        
+        def create_attribute(element, name, value):
+            element.set(qn(name), value)
+        
+        # Добавляем номер страницы
+        run = paragraph.add_run()
+        run.font.name = "Times New Roman"
+        run.font.size = Pt(12)
+        
+        # Создаем поле PAGE
+        fldChar1 = create_element('w:fldChar')
+        create_attribute(fldChar1, 'w:fldCharType', 'begin')
+        
+        instrText = create_element('w:instrText')
+        create_attribute(instrText, 'xml:space', 'preserve')
+        instrText.text = "PAGE"
+        
+        fldChar2 = create_element('w:fldChar')
+        create_attribute(fldChar2, 'w:fldCharType', 'end')
+        
+        # Получаем элемент для запуска 
+        r_element = run._r
+        r_element.append(fldChar1)
+        r_element.append(instrText)
+        r_element.append(fldChar2)
+        
+        logger.info("Нумерация страниц успешно добавлена")
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении нумерации страниц: {e}")
 
 @login_required
-def gost_export_docx(request, pk):
+def main_export_docx(request, pk):
     """
-    Экспортирует документ ГОСТ 7.32-2017 в формат DOCX
+    Экспорт документа Main в формат DOCX.
+    
+    Args:
+        request: HTTP запрос
+        pk (int): ID документа
+        
+    Returns:
+        HttpResponse: Ответ с DOCX файлом
     """
+    logger.info(f"Начат экспорт документа Main (ID: {pk}) в DOCX")
+    
     try:
-        document = get_object_or_404(GostDocument, pk=pk, user=request.user)
+        # Получаем документ
+        document = get_object_or_404(Document_main, pk=pk, owner=request.user)
+        logger.info(f"Документ найден: {document.title}")
         
-        # Создаем docx документ
-        docx = Document()
+        # Определяем шаблон на основе типа работы
+        template_name = WORK_TYPE_TEMPLATES.get(document.work_type, 'diplo_project')
+        template_path = get_docx_template(template_name)
         
-        # Настройка общих стилей документа по ГОСТ 7.32-2017
-        set_gost_styles(docx)
+        if not template_path:
+            messages.error(request, "Не удалось найти шаблон для документа.")
+            return redirect('documents:main_detail', pk=pk)
         
-        # Формирование документа
-        add_gost_title_page(docx, document)
-        add_gost_abstract(docx, document)
-        add_gost_toc(docx)
-        add_gost_sections(docx, document)
-        add_gost_references(docx, document)
-        add_gost_appendices(docx, document)
+        # Используем DocxTemplate для заполнения шаблона вместо ручной замены
+        doc_template = DocxTemplate(template_path)
         
-        # Сохранение и отправка документа
+        # Подготавливаем контекст для шаблона
+        # Ключи должны соответствовать переменным в шаблоне (например, {{ TITLE }})
+        context = {
+            'TITLE': document.title.upper(),
+            'TitleContinue': "",
+            'YEAR': str(document.year),
+            'YearShort': str(document.year)[-2:] if document.year else '__',
+            'STUDENT_NAME': document.student_name or '',
+            'SUPERVISOR': document.supervisor or '',
+            'SupervisorPosition': getattr(document, 'supervisor_position', ''),
+            'SupervisorSignature': '_________',
+            'StudentSignature': '_________',
+            'Institut': document.institute_name or 'Институт космических и информационных технологий',
+            'institut': document.institute_name or 'Институт космических и информационных технологий',  # вариант с маленькой буквы
+            'Kafedra': document.department_name or '',
+            'ZavKaf': getattr(document, 'head_of_department', ''),
+            'Podpis': '_________',
+            'Day': getattr(document, 'day', '___'),
+            'Month': getattr(document, 'month', '________'),
+            'Speciality': f"{document.specialty_code} {document.specialty_name}".strip(),
+            'UNIVERSITY': (document.university_name or 'СИБИРСКИЙ ФЕДЕРАЛЬНЫЙ УНИВЕРСИТЕТ').upper(),
+            'code': document.specialty_code,
+            'head_of_department': getattr(document, 'head_of_department', ''),
+            'speciality_full': f"{document.specialty_code_full} {document.specialty_name}".strip(),
+            'record_number': document.record_number,
+            'reviewer': document.reviewer or '',
+            'reviewer_position': getattr(document, 'reviewer_position', ''),
+            'factory_supervisor': document.factory_supervisor or '',
+        }
+        
+        # Рендерим документ с указанным контекстом
+        logger.info("Заполнение шаблона через DocxTemplate")
+        doc_template.render(context)
+        
+        # Сохраняем в BytesIO
         buffer = BytesIO()
-        docx.save(buffer)
-        buffer.seek(0)
+        doc_template.save(buffer)
         
+        # Теперь нам нужно добавить основное содержимое и применить стили
+        # Для этого создаем обычный Document из сохраненного буфера
+        buffer.seek(0)
+        docx = Document(buffer)
+        
+        # Проверяем и создаем базовые стили только для основного текста
+        ensure_basic_styles(docx)
+        
+        # Применяем стили форматирования на основе стандарта (только для основного текста)
+        if document.standart:
+            logger.info(f"Применение стилей форматирования для стандарта: {document.standart}")
+            apply_document_formatting(docx, document.standart)
+        
+        # Добавляем содержимое документа
+        if document.data:
+            logger.info("Добавление содержимого документа")
+            process_html_to_docx(document.data, docx)
+        else:
+            docx.add_paragraph("Документ не содержит данных")
+            
+        # Добавляем нумерацию страниц
+        add_page_numbers(docx)
+        
+        # Сохраняем документ в BytesIO для передачи пользователю
+        final_buffer = BytesIO()
+        docx.save(final_buffer)
+        final_buffer.seek(0)
+        
+        # Формируем имя файла
+        safe_filename = slugify(document.document_name or document.title)
+        if not safe_filename:  # Дополнительная проверка на пустое имя
+            safe_filename = f"document_{pk}"
+        filename = f"{safe_filename}.docx"
+        
+        # Отправляем файл пользователю с правильным Content-Disposition
         response = HttpResponse(
-            buffer.getvalue(),
+            final_buffer.read(),
             content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        file_name = f"ГОСТ_{document.title.replace(' ', '_')}.docx"
-        response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
+        logger.info(f"Экспорт документа Main в DOCX успешно завершен. Имя файла: {filename}")
         return response
+        
     except Exception as e:
-        return HttpResponse(f"Ошибка при экспорте документа: {str(e)}", status=500)
-
+        logger.error(f"Ошибка при экспорте документа Main в DOCX: {e}")
+        messages.error(request, f"Ошибка при экспорте документа: {str(e)}")
+        return redirect('documents:main_detail', pk=pk)
 
 @login_required
-def sto_export_docx(request, pk):
+def main_export_pdf(request, pk):
     """
-    Экспортирует документ СТО СФУ 4.2-07-2008 в формат DOCX
+    Экспорт документа Main в формат PDF.
+    
+    Args:
+        request: HTTP запрос
+        pk (int): ID документа
+        
+    Returns:
+        HttpResponse: Ответ с PDF файлом
     """
-    try:
-        document = get_object_or_404(Document_sto, pk=pk, owner=request.user)
-        
-        # Создаем docx документ
-        docx = Document()
-        
-        # Настройка общих стилей документа по СТО СФУ
-        set_sto_styles(docx)
-        
-        # Формирование документа
-        add_sto_title_page(docx, document)
-        # Добавляем реферат до оглавления
+    logger.info(f"Начат экспорт документа Main (ID: {pk}) в PDF (ДИАГНОСТИКА - ЭТАП 2)") 
+    
+    com_initialized = False
+    if pythoncom:
         try:
-            abstract = document.abstract
-            print(abstract.text)
-            if abstract:
-                p = docx.add_paragraph("РЕФЕРАТ", style='StoHeading1')
-                # Метаданные реферата
-                meta_table = docx.add_table(rows=6, cols=2)
-                meta_table.style = 'Table Grid'
-                
-                # Первый ряд
-                cell = meta_table.cell(0, 0)
-                cell.text = "Количество страниц:"
-                meta_table.cell(0, 1).text = str(abstract.page_count)
-                
-                # Второй ряд
-                cell = meta_table.cell(1, 0)
-                cell.text = "Количество иллюстраций:"
-                meta_table.cell(1, 1).text = str(abstract.illustrations_count)
-                
-                # Третий ряд
-                cell = meta_table.cell(2, 0)
-                cell.text = "Количество таблиц:"
-                meta_table.cell(2, 1).text = str(abstract.tables_count)
-                
-                # Четвёртый ряд
-                cell = meta_table.cell(3, 0)
-                cell.text = "Количество формул:"
-                meta_table.cell(3, 1).text = str(abstract.formulas_count)
-                
-                # Пятый ряд
-                cell = meta_table.cell(4, 0)
-                cell.text = "Количество приложений:"
-                meta_table.cell(4, 1).text = str(abstract.appendices_count)
-                
-                # Шестой ряд
-                cell = meta_table.cell(5, 0)
-                cell.text = "Количество источников:"
-                meta_table.cell(5, 1).text = str(abstract.references_count)
-
-                # Делаем ширину первой колонки больше
-                for row in meta_table.rows:
-                    row.cells[0].width = Inches(3)
-                    row.cells[1].width = Inches(1)
-                
-                # Добавляем пробел после таблицы
-                docx.add_paragraph()
-                
-                # Добавляем ключевые слова (при наличии)
-                if abstract.keywords:
-                    p = docx.add_paragraph()
-                    p.style = 'Normal'
-                    run = p.add_run("КЛЮЧЕВЫЕ СЛОВА: ")
-                    run.bold = True
-                    # Обрабатываем ключевые слова как HTML в документе, а не в параграфе
-                    html_to_docx(abstract.keywords, docx)
-                    docx.add_paragraph()
-
-                # Добавляем текст реферата
-                if abstract.text:
-                    # Заголовок "Текст реферата" не нужен, т.к. весь документ - это реферат
-                    html_to_docx(abstract.text, docx)
-                
-                docx.add_page_break()
+            pythoncom.CoInitialize()
+            com_initialized = True
+            logger.info("COM успешно инициализирован.")
         except Exception as e:
-            print(f"Ошибка при добавлении реферата СТО: {str(e)}")
-        
-        add_sto_toc(docx)
-        add_sto_sections(docx, document)
-        add_sto_bibliography(docx, document)
-        add_sto_appendices(docx, document)
-        
-        # Сохранение и отправка документа
-        buffer = BytesIO()
-        docx.save(buffer)
-        buffer.seek(0)
-        
-        response = HttpResponse(
-            buffer.getvalue(),
-            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
-        file_name = f"СТО_{document.title.replace(' ', '_')}.docx"
-        response['Content-Disposition'] = f'attachment; filename="{file_name}"'
-        
-        return response
-    except Exception as e:
-        return HttpResponse(f"Ошибка при экспорте документа: {str(e)}", status=500)
-
-
-# --- Функции настройки стилей ---
-
-def set_gost_styles(docx):
-    """Устанавливает стили документа по ГОСТ 7.32-2017"""
-    # Устанавливаем размеры полей страницы
-    sections = docx.sections
-    for section in sections:
-        section.left_margin = Cm(3.0)   # 30 мм
-        section.right_margin = Cm(1.5)  # 15 мм
-        section.top_margin = Cm(2.0)    # 20 мм
-        section.bottom_margin = Cm(2.0) # 20 мм
-    
-    # Основной стиль текста
-    style_normal = docx.styles['Normal']
-    font = style_normal.font
-    font.name = 'Times New Roman'
-    font.size = Pt(14)
-    font.color.rgb = RGBColor(0, 0, 0)  # Черный цвет
-    paragraph_format = style_normal.paragraph_format
-    paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE  # 1.5 интервал
-    paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY  # По ширине
-    paragraph_format.first_line_indent = Pt(15)  # 1.25 см отступ (15pt ≈ 1.25 см)
-    
-    # Стиль заголовка 1
-    heading1_style = docx.styles.add_style('GostHeading1', WD_STYLE_TYPE.PARAGRAPH)
-    heading1_style.base_style = docx.styles['Heading 1']
-    font = heading1_style.font
-    font.name = 'Times New Roman'
-    font.size = Pt(16)
-    font.bold = True
-    font.color.rgb = RGBColor(0, 0, 0)
-    paragraph_format = heading1_style.paragraph_format
-    paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    paragraph_format.space_before = Pt(12)
-    paragraph_format.space_after = Pt(12)
-    
-    # Стиль заголовка 2
-    heading2_style = docx.styles.add_style('GostHeading2', WD_STYLE_TYPE.PARAGRAPH)
-    heading2_style.base_style = docx.styles['Heading 2']
-    font = heading2_style.font
-    font.name = 'Times New Roman'
-    font.size = Pt(14)
-    font.bold = True
-    font.color.rgb = RGBColor(0, 0, 0)
-    paragraph_format = heading2_style.paragraph_format
-    paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    paragraph_format.space_before = Pt(12)
-    paragraph_format.space_after = Pt(6)
-    paragraph_format.first_line_indent = Pt(15)
-
-
-def set_sto_styles(docx):
-    """Устанавливает стили документа по СТО СФУ 4.2-07-2008"""
-    # Устанавливаем размеры полей страницы
-    sections = docx.sections
-    for section in sections:
-        section.left_margin = Cm(2.5)   # 25 мм
-        section.right_margin = Cm(1.0)  # 10 мм
-        section.top_margin = Cm(2.0)    # 20 мм
-        section.bottom_margin = Cm(2.0) # 20 мм
-    
-    # Основной стиль текста
-    style_normal = docx.styles['Normal']
-    font = style_normal.font
-    font.name = 'Times New Roman'
-    font.size = Pt(14)
-    font.color.rgb = RGBColor(0, 0, 0)  # Черный цвет
-    paragraph_format = style_normal.paragraph_format
-    paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE  # 1.5 интервал
-    paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY  # По ширине
-    paragraph_format.first_line_indent = Pt(15)  # 1.25 см отступ
-    
-    # Стиль заголовка 1
-    heading1_style = docx.styles.add_style('StoHeading1', WD_STYLE_TYPE.PARAGRAPH)
-    heading1_style.base_style = docx.styles['Heading 1']
-    font = heading1_style.font
-    font.name = 'Times New Roman'
-    font.size = Pt(16)
-    font.bold = True
-    font.color.rgb = RGBColor(0, 0, 0)
-    paragraph_format = heading1_style.paragraph_format
-    paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    paragraph_format.space_before = Pt(12)
-    paragraph_format.space_after = Pt(12)
-
-
-# --- Функции формирования ГОСТ документа ---
-
-def add_gost_title_page(docx, document):
-    """Добавляет титульный лист ГОСТ документа"""
-    try:
-        title_page = document.title_page
-    except:
-        title_page = None
-    
-    # Добавляем верхний колонтитул (если есть)
-    p = docx.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    if title_page and title_page.department:
-        p.add_run(title_page.department.upper()).bold = True
-    
-    # Добавляем отступ
-    for _ in range(5):
-        docx.add_paragraph()
-    
-    # Заголовок документа
-    p = docx.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run(document.title.upper()).bold = True
-    
-    # Тип отчета
-    if document.report_type:
-        p = docx.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        report_type_display = dict(document._meta.get_field('report_type').choices)[document.report_type]
-        p.add_run(f"{report_type_display.upper()} ОТЧЁТ").bold = True
-    
-    # Добавляем информацию о руководителе и исполнителях
-    for _ in range(10):
-        docx.add_paragraph()
-    
-    # Информация об исполнителях в таблице
-    if title_page:
-        table = docx.add_table(rows=1, cols=2)
-        table.autofit = True
-        
-        # Левая колонка - руководитель
-        if title_page.head_position or title_page.head_full_name:
-            cell = table.cell(0, 0)
-            p = cell.paragraphs[0]
-            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            p.add_run(f"{title_page.head_position or 'Руководитель'}").bold = True
-            p.add_run(f"\n{title_page.head_full_name or ''}")
-    
-    # Город и год в нижней части страницы
-    for _ in range(5):
-        docx.add_paragraph()
-    
-    p = docx.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run(f"{document.year}").bold = True
-    
-    # Добавляем разрыв страницы
-    docx.add_page_break()
-
-
-def add_gost_abstract(docx, document):
-    """Добавляет реферат ГОСТ документа"""
-    p = docx.add_paragraph("РЕФЕРАТ", style='GostHeading1')
-    
-    try:
-        abstract = document.abstract
-        if abstract and abstract.content:
-            html_to_docx(abstract.content, docx)
-    except:
-        docx.add_paragraph()
-    
-    docx.add_page_break()
-
-
-def add_gost_toc(docx):
-    """Добавляет оглавление ГОСТ документа"""
-    p = docx.add_paragraph("СОДЕРЖАНИЕ", style='GostHeading1')
-    
-    # Добавляем заглушку для оглавления
-    # В python-docx нет прямой поддержки автоматического оглавления
-    # Для продакшена можно использовать внешние библиотеки или макросы Word
-    docx.add_paragraph("(Содержание формируется автоматически в MS Word)")
-    
-    docx.add_page_break()
-
-
-def add_gost_sections(docx, document):
-    """Добавляет основные разделы ГОСТ документа"""
-    # Введение
-    p = docx.add_paragraph("ВВЕДЕНИЕ", style='GostHeading1')
-    
-    if document.introduction:
-        html_to_docx(document.introduction, docx)
-    
-    docx.add_page_break()
-    
-    # Термины и определения
-    if document.terms.exists():
-        p = docx.add_paragraph("ТЕРМИНЫ И ОПРЕДЕЛЕНИЯ", style='GostHeading1')
-        
-        for term in document.terms.all().order_by('order'):
-            p = docx.add_paragraph()
-            p.style = 'Normal'
-            r = p.add_run(f"{term.term} – ")
-            r.bold = True
-            p.add_run(term.definition)
-        
-        docx.add_page_break()
-    
-    # Сокращения
-    if document.abbreviations.exists():
-        p = docx.add_paragraph("СОКРАЩЕНИЯ", style='GostHeading1')
-        
-        for abbr in document.abbreviations.all().order_by('order'):
-            p = docx.add_paragraph()
-            p.style = 'Normal'
-            r = p.add_run(f"{abbr.abbreviation} – ")
-            r.bold = True
-            p.add_run(abbr.meaning)
-        
-        docx.add_page_break()
-    
-    # Основная часть
-    p = docx.add_paragraph("ОСНОВНАЯ ЧАСТЬ", style='GostHeading1')
-    
-    if document.main_part:
-        html_to_docx(document.main_part, docx)
-    
-    docx.add_page_break()
-    
-    # Заключение
-    p = docx.add_paragraph("ЗАКЛЮЧЕНИЕ", style='GostHeading1')
-    
-    if document.conclusion:
-        html_to_docx(document.conclusion, docx)
-    
-    docx.add_page_break()
-
-
-def add_gost_references(docx, document):
-    """Добавляет список использованных источников ГОСТ документа"""
-    p = docx.add_paragraph("СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ", style='GostHeading1')
-    
-    try:
-        references = document.references.all().order_by('order')
-        if references.exists():
-            for i, ref in enumerate(references, 1):
-                p = docx.add_paragraph(f"{i}. {ref.citation}")
-                p.style = 'Normal'
-                p.paragraph_format.first_line_indent = 0
-                p.paragraph_format.left_indent = Pt(12)
-                p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        else:
-            docx.add_paragraph("Список литературы отсутствует.")
-    except:
-        docx.add_paragraph("Список литературы отсутствует.")
-    
-    docx.add_page_break()
-
-
-def add_gost_appendices(docx, document):
-    """Добавляет приложения ГОСТ документа"""
-    try:
-        appendices = document.appendices.all().order_by('order')
-        if appendices.exists():
-            for appendix in appendices:
-                p = docx.add_paragraph(f"ПРИЛОЖЕНИЕ {appendix.label}", style='GostHeading1')
-                
-                if appendix.title:
-                    p = docx.add_paragraph(appendix.title, style='GostHeading2')
-                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                
-                if appendix.content:
-                    html_to_docx(appendix.content, docx)
-                
-                docx.add_page_break()
-    except Exception as e:
-        print(f"Ошибка при добавлении приложений ГОСТ: {str(e)}")
-
-
-# --- Функции формирования СТО документа ---
-
-def add_sto_title_page(docx, document):
-    """Добавляет титульный лист СТО документа"""
-    # Верхний колонтитул
-    p = docx.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run("СИБИРСКИЙ ФЕДЕРАЛЬНЫЙ УНИВЕРСИТЕТ").bold = True
-    
-    # Добавляем отступ
-    for _ in range(5):
-        docx.add_paragraph()
-    
-    # Заголовок документа
-    p = docx.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run(document.title.upper()).bold = True
-    
-    # Тип документа
-    p = docx.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run("Отчет для СТО СФУ 4.2").bold = True
-    
-    # Автор и руководитель
-    for _ in range(10):
-        docx.add_paragraph()
-    
-    # Таблица с автором и руководителем
-    table = docx.add_table(rows=2, cols=2)
-    table.autofit = True
-    
-    # Левая колонка - автор
-    cell = table.cell(0, 0)
-    p = cell.paragraphs[0]
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    p.add_run("Автор:").bold = True
-    
-    # Правая колонка - руководитель
-    cell = table.cell(0, 1)
-    p = cell.paragraphs[0]
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    p.add_run("Руководитель:").bold = True
-    
-    # Добавляем ФИО
-    cell = table.cell(1, 0)
-    p = cell.paragraphs[0]
-    p.add_run(document.student_name)
-    
-    # Добавляем руководителя в правой колонке
-    cell = table.cell(1, 1)
-    p = cell.paragraphs[0]
-    p.add_run(document.supervisor)
-    
-    # Город и год
-    for _ in range(5):
-        docx.add_paragraph()
-    
-    p = docx.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run(f"Красноярск {document.year}").bold = True
-    
-    docx.add_page_break()
-
-
-def add_sto_toc(docx):
-    """Добавляет оглавление СТО документа"""
-    p = docx.add_paragraph("СОДЕРЖАНИЕ", style='StoHeading1')
-    
-    # Заглушка для оглавления
-    docx.add_paragraph("(Содержание формируется автоматически в MS Word)")
-    
-    docx.add_page_break()
-
-
-def add_sto_sections(docx, document):
-    """Добавляет разделы СТО документа"""
-    # Добавляем разделы документа
-    try:
-        sections = document.sections.all().order_by('order')
-        for section in sections:
-            p = docx.add_paragraph(section.title.upper(), style='StoHeading1')
+            logger.warning(f"Ошибка при инициализации COM: {e}")
+            pass
             
-            if section.content:
-                html_to_docx(section.content, docx)
+    try:
+        document_obj = get_object_or_404(Document_main, pk=pk, owner=request.user)
+        logger.info(f"Документ найден: {document_obj.title}")
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            docx_path = os.path.join(temp_dir, f"temp_{pk}_diag2.docx") 
+            pdf_path = os.path.join(temp_dir, f"temp_{pk}_diag2.pdf")
             
-            docx.add_page_break()
+            template_name = WORK_TYPE_TEMPLATES.get(document_obj.work_type, 'diplo_project')
+            template_path = get_docx_template(template_name)
+            
+            if not template_path:
+                messages.error(request, "Не удалось найти шаблон для документа.")
+                return redirect('documents:main_detail', pk=pk)
+            
+            # 1. Рендеринг шаблона DocxTemplate
+            doc_template = DocxTemplate(template_path)
+            context = {
+                'TITLE': document_obj.title.upper(),
+                'TitleContinue': "",
+                'YEAR': str(document_obj.year),
+                'YearShort': str(document_obj.year)[-2:] if document_obj.year else '__',
+                'STUDENT_NAME': document_obj.student_name or '',
+                'SUPERVISOR': document_obj.supervisor or '',
+                'SupervisorPosition': getattr(document_obj, 'supervisor_position', ''),
+                'SupervisorSignature': '_________',
+                'StudentSignature': '_________',
+                'Institut': document_obj.institute_name or 'Институт космических и информационных технологий',
+                'institut': document_obj.institute_name or 'Институт космических и информационных технологий',
+                'Kafedra': document_obj.department_name or '',
+                'ZavKaf': getattr(document_obj, 'head_of_department', ''),
+                'Podpis': '_________',
+                'Day': getattr(document_obj, 'day', '___'),
+                'Month': getattr(document_obj, 'month', '________'),
+                'Speciality': f"{document_obj.specialty_code} {document_obj.specialty_name}".strip(),
+                'UNIVERSITY': (document_obj.university_name or 'СИБИРСКИЙ ФЕДЕРАЛЬНЫЙ УНИВЕРСИТЕТ').upper(),
+                'code': document_obj.specialty_code,
+                'head_of_department': getattr(document_obj, 'head_of_department', ''),
+                'speciality_full': f"{document_obj.specialty_code_full} {document_obj.specialty_name}".strip(),
+                'record_number': document_obj.record_number,
+                'reviewer': document_obj.reviewer or '',
+                'reviewer_position': getattr(document_obj, 'reviewer_position', ''),
+                'factory_supervisor': document_obj.factory_supervisor or '',
+            }
+            logger.info("Заполнение шаблона через DocxTemplate (ДИАГНОСТИКА - ЭТАП 2)")
+            doc_template.render(context)
+            
+            # --- НАЧАЛО БЛОКА ДИАГНОСТИКИ ЭТАП 2: --- 
+            # Сохраняем результат DocxTemplate НАПРЯМУЮ в файл, минуя Document(buffer)
+            logger.info(f"ДИАГНОСТИКА - ЭТАП 2: Сохранение результата DocxTemplate напрямую в {docx_path}")
+            doc_template.save(docx_path) # <--- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ДЛЯ ДИАГНОСТИКИ
+            # --- КОНЕЦ БЛОКА ДИАГНОСТИКИ ЭТАП 2 --- 
+            
+            # 6. Конвертация в PDF
+            logger.info(f"Конвертация DOCX в PDF из файла: {docx_path} (ДИАГНОСТИКА - ЭТАП 2)")
+            convert(docx_path, pdf_path)
+            logger.info(f"PDF файл создан: {pdf_path} (ДИАГНОСТИКА - ЭТАП 2)")
+            
+            safe_filename = slugify(document_obj.document_name or document_obj.title or "document")
+            if not safe_filename:
+                safe_filename = f"document_{pk}"
+            filename = f"{safe_filename}_diag2.pdf" 
+            
+            with open(pdf_path, 'rb') as pdf_file:
+                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                
+                logger.info(f"Экспорт документа Main в PDF успешно завершен. Имя файла: {filename} (ДИАГНОСТИКА - ЭТАП 2)")
+                return response
+                
     except Exception as e:
-        print(f"Ошибка при добавлении разделов СТО: {str(e)}")
-        # Если разделов нет, добавляем стандартную структуру
-        sections = ["ВВЕДЕНИЕ", "ОСНОВНАЯ ЧАСТЬ", "ЗАКЛЮЧЕНИЕ"]
-        for section in sections:
-            p = docx.add_paragraph(section, style='StoHeading1')
-            docx.add_paragraph()
-            docx.add_page_break()
-
-
-def add_sto_bibliography(docx, document):
-    """Добавляет библиографию СТО документа"""
-    p = docx.add_paragraph("БИБЛИОГРАФИЧЕСКИЙ СПИСОК", style='StoHeading1')
-    
-    try:
-        bibliography = document.biblio.all().order_by('order')
-        if bibliography.exists():
-            for i, ref in enumerate(bibliography, 1):
-                p = docx.add_paragraph(f"{i}. {ref.entry_text}")
-                p.style = 'Normal'
-                p.paragraph_format.first_line_indent = 0
-                p.paragraph_format.left_indent = Pt(12)
-                p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        else:
-            docx.add_paragraph("Список литературы отсутствует.")
-    except:
-        docx.add_paragraph("Список литературы отсутствует.")
-    
-    docx.add_page_break()
-
-
-def add_sto_appendices(docx, document):
-    """Добавляет приложения СТО документа"""
-    try:
-        appendices = document.appendices.all().order_by('label')
-        if appendices.exists():
-            for appendix in appendices:
-                p = docx.add_paragraph(f"ПРИЛОЖЕНИЕ {appendix.label}", style='StoHeading1')
-                
-                if appendix.title:
-                    p = docx.add_paragraph(appendix.title)
-                    p.style = 'Normal'
-                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                
-                # Для приложений СТО content - это файл, а не текст
-                p = docx.add_paragraph(f"[Ссылка на файл: {appendix.content.url}]")
-                p.style = 'Normal'
-                
-                docx.add_page_break()
-    except Exception as e:
-        print(f"Ошибка при добавлении приложений: {str(e)}") 
+        logger.error(f"Ошибка при экспорте документа Main в PDF (ДИАГНОСТИКА - ЭТАП 2): {e}", exc_info=True)
+        messages.error(request, f"Ошибка при экспорте документа (диагностика - этап 2): {str(e)}")
+        return redirect('documents:main_detail', pk=pk)
+    finally:
+        if com_initialized:
+            try:
+                pythoncom.CoUninitialize()
+                logger.info("COM успешно деинициализирован.")
+            except Exception as e:
+                logger.warning(f"Ошибка при деинициализации COM: {e}")

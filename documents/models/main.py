@@ -22,13 +22,19 @@ class Document_main(models.Model):
     institute_name = models.CharField('Полное наименование института', max_length=255, null =True, blank=True)
     department_name = models.CharField('Полное наименование кафедры', max_length=255, null =True, blank=True)
     document_name = models.CharField('Название документа', max_length=255, null =True, blank=True,)
-
+    head_of_department = models.CharField('Заведующий кафедрой', max_length=255, null =True, blank=True,)
     # --- титульный лист ---
     work_type       = models.CharField('Вид работы', max_length=20, choices=WORK_TYPES)
-    specialty_code  = models.CharField('Код специальности', max_length=20, blank=True)
+    specialty_code  = models.CharField('Код специальности', max_length=100, blank=True)
     specialty_name  = models.CharField('Наименование специальности/направления', max_length=200, blank=True)
+    specialty_code_full  = models.CharField('Код специальности Магистерской программы', max_length=200, blank=True)
     title           = models.CharField('Тема работы', max_length=255)
-    supervisor      = models.CharField('Руководитель (ФИО, ученая степень/звание)', max_length=200)
+    record_number   = models.CharField('Номер зачётной книжки', max_length=200, blank=True)
+    supervisor      = models.CharField('Руководитель (ФИО)', max_length=200)
+    supervisor_position = models.CharField('Должность руководителя,ученая степень/звание', max_length=200, blank=True)
+    factory_supervisor = models.CharField('Руководитель предприятия', max_length=200, blank=True)
+    reviewer = models.CharField('Рецензент (ФИО)', max_length=200, blank=True)
+    reviewer_position = models.CharField('Должность рецензента,ученая степень/звание', max_length=200, blank=True)
     student_name    = models.CharField('Исполнитель (ФИО)', max_length=200)
     consultants     = RichTextUploadingField('Консультанты (ФИО, должность)', blank=True,
                                        help_text='По пункту 6.2.2: консультанты и нормоконтролёр')

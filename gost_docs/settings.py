@@ -26,17 +26,7 @@ SECRET_KEY = 'django-insecure-@z8iwcm)pigps09tf96es1i71@cnqxcs1&%xhzd*xe19ryz7r&
 DEBUG = True
 
 ALLOWED_HOSTS = []
-CKEDITOR_CONFIGS = {
-    'default': {
-        'language': 'ru',
-        'toolbar': 'Full',
-        'width': '100%',
-        'height': 300,
-        'extraPlugins': 'uploadimage',  
-        'filebrowserUploadUrl': '/ckeditor/upload/',
-        'filebrowserBrowseUrl': '/ckeditor/browse/',
-    },
-}
+
 
 
 # Application definition
@@ -51,6 +41,7 @@ INSTALLED_APPS = [
     'documents',
     'ckeditor',
     'ckeditor_uploader',
+
 
 ]
 
@@ -144,9 +135,10 @@ CKEDITOR_UPLOAD_PATH = 'uploads/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CKEDITOR_CONFIGS = {
     'default': {
-        'toolbar': 'Full',
-        'height': 300,
+        'language': 'ru',
+        'toolbar': 'full',
         'width': '100%',
+        'height': 300,
         'extraPlugins': 'uploadimage',  
         'filebrowserUploadUrl': '/ckeditor/upload/',
         'filebrowserBrowseUrl': '/ckeditor/browse/',

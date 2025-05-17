@@ -1,6 +1,5 @@
 from django import forms
 from documents.models.gost import Document,TitlePage, Performer,Abstract,Abbreviation,Appendix,Term,Reference
-from ckeditor.widgets import CKEditorWidget
 from django.forms import inlineformset_factory
 
 class DocumentForm(forms.ModelForm):
@@ -8,13 +7,7 @@ class DocumentForm(forms.ModelForm):
         model = Document
         fields = '__all__'
         exclude = ['user', 'created_at']
-        widgets = {
-            'introduction': CKEditorWidget(),
-            'goal': CKEditorWidget(),
-            'tasks': CKEditorWidget(),
-            'main_part': CKEditorWidget(),
-            'conclusion': CKEditorWidget(),
-        }
+       
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
@@ -38,9 +31,7 @@ class AbstractForm(forms.ModelForm):
     class Meta:
         model = Abstract
         fields = ['content']
-        widgets = {
-            'content': CKEditorWidget(),
-        }
+      
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
@@ -86,9 +77,7 @@ class AppendixForm(forms.ModelForm):
     class Meta:
         model = Appendix
         exclude = ['document']
-        widgets = {
-            'content': CKEditorWidget(),
-        }
+   
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():

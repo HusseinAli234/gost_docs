@@ -4,11 +4,11 @@ from django.forms import ModelForm
 from django.utils.translation import gettext_lazy as _
 from documents.models import Document_main
 
-
 class Document_mainForm(ModelForm):
 
     class Meta:
         model = Document_main
+
         fields = [
             'standart',
             'university_name',
@@ -20,8 +20,14 @@ class Document_mainForm(ModelForm):
             'specialty_name',
             'title',
             'supervisor',
+            'head_of_department',
             'student_name',
             'consultants',
+            'factory_supervisor',
+            'reviewer',
+            'reviewer_position',
+            'supervisor_position',
+            'record_number',
             'approval_note',
             'city',
             'year',
@@ -34,6 +40,12 @@ class Document_mainForm(ModelForm):
             'university_name': _('Наименование университета'),
             'institute_name': _('Полное наименование института'),
             'department_name': _('Полное наименование кафедры'),
+            'head_of_department': _('Заведующий кафедрой(ФИО)'),
+            'factory_supervisor': _('Руководитель предприятия(ФИО) *Необязательное поле'),
+            'reviewer': _('Рецензент (ФИО)*Необязательное поле'),
+            'reviewer_position': _('Должность рецензента,ученая степень/звание *Необязательное поле'),
+            'supervisor_position': _('Должность руководителя,ученая степень/звание'),
+            'record_number': _('Номер зачётной книжки *Необязательное поле'),
             'document_name': _('Название документа'),
             'work_type': _('Вид работы'),
             'specialty_code': _('Код специальности'),
@@ -62,4 +74,4 @@ class Document_mainForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control'})    
+            field.widget.attrs.update({'class': 'form-control' })    

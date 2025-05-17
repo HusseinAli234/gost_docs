@@ -1,68 +1,568 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ main.title }}{% endblock %}
+{% block title %}{{ main.title }} | Просмотр документа{% endblock %}
+
+{% block extra_css %}
+<style>
+  .document-header {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+  
+  .document-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(to bottom, #0056b3, #80bdff);
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+  
+  .document-title {
+    color: #212529;
+    font-weight: 700;
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+    padding-left: 1rem;
+  }
+  
+  .document-meta {
+    color: #6c757d;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    padding-left: 1rem;
+  }
+  
+  .info-card {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .info-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+  }
+  
+  .card-header {
+    color: #0056b3;
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+    display: flex;
+    align-items: center;
+  }
+  
+  .card-header i {
+    margin-right: 0.75rem;
+    font-size: 1.35rem;
+  }
+  
+  .info-list {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
+  }
+  
+  .info-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f2f2f2;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  
+  .info-list li:last-child {
+    border-bottom: none;
+  }
+  
+  .info-label {
+    font-weight: 500;
+    color: #495057;
+    width: 30%;
+    min-width: 200px;
+  }
+  
+  .info-value {
+    color: #212529;
+    flex: 1;
+  }
+  
+  .document-content {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .document-content h1, .document-content h2, .document-content h3 {
+    color: #0056b3;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .document-content p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+  }
+  
+  .document-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+    margin: 1rem 0;
+  }
+  
+  .timestamp {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 1rem;
+    text-align: right;
+  }
+  
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .action-btn i {
+    margin-right: 0.5rem;
+  }
+  
+  .btn-back {
+    background-color: #f8f9fa;
+    color: #343a40;
+    border: 1px solid #dee2e6;
+  }
+  
+  .btn-back:hover {
+    background-color: #e9ecef;
+    color: #212529;
+    text-decoration: none;
+  }
+  
+  .btn-edit {
+    background-color: #0056b3;
+    color: #fff;
+  }
+  
+  .btn-edit:hover {
+    background-color: #004494;
+    color: #fff;
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.2);
+  }
+  
+  .btn-delete {
+    background-color: #dc3545;
+    color: #fff;
+  }
+  
+  .btn-delete:hover {
+    background-color: #bd2130;
+    color: #fff;
+    text-decoration: none;
+  }
+  
+  .btn-export {
+    background-color: #28a745;
+    color: #fff;
+  }
+  
+  .btn-export:hover {
+    background-color: #218838;
+    color: #fff;
+    text-decoration: none;
+  }
+  
+  @media (max-width: 768px) {
+    .info-label {
+      width: 100%;
+      margin-bottom: 0.25rem;
+    }
+    
+    .info-value {
+      width: 100%;
+    }
+    
+    .document-title {
+      font-size: 1.5rem;
+    }
+    
+    .action-buttons {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .action-buttons .action-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mx-auto py-8">
-  <h1 class="text-3xl font-bold mb-4">{{ main.title }}</h1>
-  <p class="text-sm text-gray-600 mb-6">Исполнитель: {{ main.student_name }}</p>
-  <h4 class="text-lg font-semibold mb-4">Стандарт: {{ main.standart }}</h4>
+<div class="container my-5">
+  <!-- Заголовок документа -->
+  <div class="document-header">
+    <h1 class="document-title">{{ main.title }}</h1>
+    <p class="document-meta">
+      <i class="bi bi-person"></i> Исполнитель: <strong>{{ main.student_name }}</strong> | 
+      <i class="bi bi-journal-text"></i> Вид работы: <strong>{{ main.get_work_type_display }}</strong>
+    </p>
+    <p class="document-meta">
+      <i class="bi bi-file-earmark-text"></i> Стандарт: <strong>{{ main.standart }}</strong>
+    </p>
+  </div>
 
-  
-
-  <div class="bg-white shadow rounded-lg p-6 space-y-4">
-    <h2 class="text-xl font-semibold">Информация об учебном заведении</h2>
-    <ul class="list-disc list-inside">
-      {% if main.university_name %}<li><strong>Университет:</strong> {{ main.university_name }}</li>{% endif %}
-      {% if main.institute_name %}<li><strong>Институт:</strong> {{ main.institute_name }}</li>{% endif %}
-      {% if main.department_name %}<li><strong>Кафедра:</strong> {{ main.department_name }}</li>{% endif %}
-      {% if main.city %}<li><strong>Город выполнения:</strong> {{ main.city }}</li>{% endif %}
-      <li><strong>Год выполнения:</strong> {{ main.year }}</li>
-    </ul>
-
-    <h2 class="text-xl font-semibold mt-6">Данные по работе</h2>
-    <ul class="list-disc list-inside">
-      <li><strong>Вид работы:</strong> {{ main.get_work_type_display }}</li>
-      {% if main.specialty_code %}<li><strong>Код специальности:</strong> {{ main.specialty_code }}</li>{% endif %}
-      {% if main.specialty_name %}<li><strong>Специальность:</strong> {{ main.specialty_name }}</li>{% endif %}
-      {% if main.document_name %}<li><strong>Название документа:</strong> {{ main.document_name }}</li>{% endif %}
-      {% if main.approval_note %}<li><strong>Гриф утверждения:</strong> {{ main.approval_note }}</li>{% endif %}
-    </ul>
-
-    <h2 class="text-xl font-semibold mt-6">Руководство и консультанты</h2>
-    <ul class="list-disc list-inside">
-      <li><strong>Руководитель:</strong> {{ main.supervisor }}</li>
-      {% if main.consultants %}
-        <li><strong>Консультанты и нормоконтролёр:</strong></li>
-        {% autoescape off %}
-        <div class="prose max-w-none mt-2">
-          {{ main.consultants }}
-        </div>
-        {% endautoescape %}
-      {% endif %}
-    </ul>
-
-    {% if main.data %}
-      <h2 class="text-xl font-semibold mt-6">Содержание документа</h2>
-      {% autoescape off %}
-      <div class="prose max-w-none mt-2">
-        {{ main.data }}
+  <div class="row">
+    <!-- Левая колонка с информацией -->
+    <div class="col-lg-4">
+      <!-- Информация об учебном заведении -->
+      <div class="info-card">
+        <h2 class="card-header">
+          <i class="bi bi-building"></i> Учебное заведение
+        </h2>
+        <ul class="info-list">
+          {% if main.university_name %}
+          <li>
+            <div class="info-label">Университет:</div>
+            <div class="info-value">{{ main.university_name }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.institute_name %}
+          <li>
+            <div class="info-label">Институт:</div>
+            <div class="info-value">{{ main.institute_name }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.department_name %}
+          <li>
+            <div class="info-label">Кафедра:</div>
+            <div class="info-value">{{ main.department_name }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.city %}
+          <li>
+            <div class="info-label">Город выполнения:</div>
+            <div class="info-value">{{ main.city }}</div>
+          </li>
+          {% endif %}
+          
+          <li>
+            <div class="info-label">Год выполнения:</div>
+            <div class="info-value">{{ main.year }}</div>
+          </li>
+        </ul>
       </div>
-      {% endautoescape %}
-    {% endif %}
 
-    <div class="text-sm text-gray-500 mt-6">
-      Создано: {{ main.created_at|date:"d.m.Y H:i" }}<br>
-      Обновлено: {{ main.updated_at|date:"d.m.Y H:i" }}
+      <!-- Информация о работе -->
+      <div class="info-card">
+        <h2 class="card-header">
+          <i class="bi bi-file-earmark-text"></i> Данные по работе
+        </h2>
+        <ul class="info-list">
+          <li>
+            <div class="info-label">Вид работы:</div>
+            <div class="info-value">{{ main.get_work_type_display }}</div>
+          </li>
+          
+          {% if main.specialty_code %}
+          <li>
+            <div class="info-label">Код специальности:</div>
+            <div class="info-value">{{ main.specialty_code }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.specialty_name %}
+          <li>
+            <div class="info-label">Специальность:</div>
+            <div class="info-value">{{ main.specialty_name }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.specialty_code_full %}
+          <li>
+            <div class="info-label">Код специальности магистерской программы:</div>
+            <div class="info-value">{{ main.specialty_code_full }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.record_number %}
+          <li>
+            <div class="info-label">Номер зачётной книжки:</div>
+            <div class="info-value">{{ main.record_number }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.document_name %}
+          <li>
+            <div class="info-label">Название документа:</div>
+            <div class="info-value">{{ main.document_name }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.approval_note %}
+          <li>
+            <div class="info-label">Гриф утверждения:</div>
+            <div class="info-value">{{ main.approval_note }}</div>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <!-- Руководство и консультанты -->
+      <div class="info-card">
+        <h2 class="card-header">
+          <i class="bi bi-people"></i> Руководство и консультанты
+        </h2>
+        <ul class="info-list">
+          <li>
+            <div class="info-label">Руководитель:</div>
+            <div class="info-value">{{ main.supervisor }}</div>
+          </li>
+          
+          {% if main.supervisor_position %}
+          <li>
+            <div class="info-label">Должность руководителя:</div>
+            <div class="info-value">{{ main.supervisor_position }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.reviewer %}
+          <li>
+            <div class="info-label">Рецензент:</div>
+            <div class="info-value">{{ main.reviewer }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.reviewer_position %}
+          <li>
+            <div class="info-label">Должность рецензента:</div>
+            <div class="info-value">{{ main.reviewer_position }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.factory_supervisor %}
+          <li>
+            <div class="info-label">Руководитель от предприятия:</div>
+            <div class="info-value">{{ main.factory_supervisor }}</div>
+          </li>
+          {% endif %}
+          
+          {% if main.consultants %}
+          <li>
+            <div class="info-label">Консультанты:</div>
+            <div class="info-value">
+              {% autoescape off %}
+              {{ main.consultants }}
+              {% endautoescape %}
+            </div>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+      
+      <!-- Временные метки -->
+      <div class="info-card">
+        <h2 class="card-header">
+          <i class="bi bi-clock-history"></i> История документа
+        </h2>
+        <ul class="info-list">
+          <li>
+            <div class="info-label">Создано:</div>
+            <div class="info-value">{{ main.created_at|date:"d.m.Y H:i" }}</div>
+          </li>
+          <li>
+            <div class="info-label">Обновлено:</div>
+            <div class="info-value">{{ main.updated_at|date:"d.m.Y H:i" }}</div>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Правая колонка с содержимым документа -->
+    <div class="col-lg-8">
+      {% if main.data %}
+      <div class="d-flex justify-content-end mb-3">
+  <button id="check-standard-btn" class="btn btn-primary">
+    <i class="bi bi-check2-circle"></i> Проверить стандарт
+  </button>
+</div>
+
+<!-- Модальное окно -->
+<div class="modal fade" id="standardModal" tabindex="-1" role="dialog" aria-labelledby="standardModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+    
+      <div class="modal-header">
+        <h5 class="modal-title" id="standardModalLabel">Проверка соответствия стандарту</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Лоадер -->
+        <div id="standard-loading" class="text-center my-3">
+          <div class="spinner-border text-primary" role="status"></div>
+        </div>
+
+        <!-- Ошибка -->
+        <div id="standard-error" class="alert alert-danger d-none"></div>
+
+        <!-- Результат -->
+        <div id="standard-result" class="d-none">
+          <p><strong>Соответствие:</strong> <span id="conformsResult" class="badge">...</span></p>
+
+          <div id="violationsSection" class="mt-3">
+            <h6>Нарушения:</h6>
+            <ul class="list-group" id="violationsList"></ul>
+          </div>
+
+          <div id="commentsSection" class="mt-4">
+            <h6>Комментарии:</h6>
+            <ul class="list-group" id="commentsList"></ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+      </div>
+
     </div>
   </div>
+</div>
 
-  <div class="mt-8 flex space-x-3">
-    <a href="{% url 'documents:main_list' %}" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">← К списку документов</a>
-    {% if request.user == main.owner %}
-      <a href="{% url 'documents:main_edit' main.pk %}" class="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded">Редактировать</a>
-      <a href="{% url 'documents:main_delete' main.pk %}" class="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded">Удалить</a>
-    {% endif %}
+
+      <div class="document-content">
+        <h2 class="card-header">
+          <i class="bi bi-file-text"></i> Содержание документа
+        </h2>
+        {% autoescape off %}
+        <div class="mt-4">
+          {{ main.data }}
+        </div>
+        {% endautoescape %}
+      </div>
+      {% endif %}
+      
+      <!-- Кнопки действий -->
+      <div class="d-flex flex-wrap gap-2 action-buttons">
+        <a href="{% url 'documents:main_list' %}" class="action-btn btn-back">
+          <i class="bi bi-arrow-left"></i> К списку документов
+        </a>
+        
+        {% if request.user == main.owner %}
+        <a href="{% url 'documents:main_edit' main.pk %}" class="action-btn btn-edit">
+          <i class="bi bi-pencil-square"></i> Редактировать
+        </a>
+
+        
+        <a href="{% url 'documents:main_delete' main.pk %}" class="action-btn btn-delete">
+          <i class="bi bi-trash"></i> Удалить
+        </a>
+
+        <a href="{% url 'documents:main_export_docx' main.pk %}" class="action-btn btn-export ms-auto">
+          <i class="bi bi-file-earmark-word"></i> Экспорт в DOCX
+        </a>
+        
+        <a href="{% url 'documents:main_export_pdf' main.pk %}" class="action-btn btn-export">
+          <i class="bi bi-file-earmark-pdf"></i> Экспорт в PDF
+        </a>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
+
+<script>
+  document.getElementById('check-standard-btn').addEventListener('click', async () => {
+    const modal = new bootstrap.Modal(document.getElementById('standardModal'));
+    modal.show();
+
+    const loading = document.getElementById('standard-loading');
+    const result = document.getElementById('standard-result');
+    const error = document.getElementById('standard-error');
+
+    const conformsResult = document.getElementById('conformsResult');
+    const violationsList = document.getElementById('violationsList');
+    const commentsList = document.getElementById('commentsList');
+
+    // Показать загрузку, скрыть всё остальное
+    loading.style.display = 'block';
+    result.classList.add('d-none');
+    error.classList.add('d-none');
+
+    try {
+      const response = await fetch("{% url 'documents:check_standard_view' main.pk %}", {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      const data = await response.json();
+      loading.style.display = 'none';
+
+      if (response.ok) {
+        // Показываем блок с результатом
+        result.classList.remove('d-none');
+
+        // Соответствие
+        conformsResult.textContent = data.conforms;
+        conformsResult.className = 'badge ' + (data.conforms === "Да" ? 'bg-success' : 'bg-danger');
+
+        // Нарушения
+        violationsList.innerHTML = '';
+        data.violations.forEach(v => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item';
+          li.innerHTML = `<strong>${v.rule}:</strong> ${v.issue}<br><em>Рекомендация: ${v.suggestion}</em>`;
+          violationsList.appendChild(li);
+        });
+
+        // Комментарии
+        commentsList.innerHTML = '';
+        (data.comments || []).forEach(c => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item';
+          li.textContent = c;
+          commentsList.appendChild(li);
+        });
+
+      } else {
+        error.classList.remove('d-none');
+        error.textContent = data.error || 'Ошибка при проверке.';
+      }
+    } catch (e) {
+      loading.style.display = 'none';
+      error.classList.remove('d-none');
+      error.textContent = 'Ошибка при выполнении запроса.';
+    }
+  });
+</script>
+
 {% endblock %}
