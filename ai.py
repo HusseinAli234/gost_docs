@@ -131,6 +131,7 @@ def check_standard(standard_text: str, document_text: str):
 
         output = response.text
         result = json.loads(output)
+        print(result)
         return output
 
     except Exception as e:

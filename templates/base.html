@@ -108,7 +108,7 @@
           {# Добавляем уникальный класс authenticated-nav-item для стилизации отступов li #}
           <li class="nav-item d-flex align-items-center authenticated-nav-item">
             {# Ссылка на документы с дополнительным классом my-docs-link для отступа справа #}
-            <a class="nav-link my-docs-link" href="{% url 'landing' %}">Мои документы</a>
+            <a class="nav-link my-docs-link" href="{% url 'documents:main_list' %}">Мои документы</a>
 
             {# Форма выхода. Используем d-inline-flex для выравнивания кнопки внутри формы. #}
             <form action="{% url 'logout' %}" method="post" class="d-inline-flex align-items-center">

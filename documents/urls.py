@@ -17,7 +17,7 @@ from .views.export import  main_export_docx, main_export_pdf
 from .views.main import (
     DocumentListView as MainDocumentListView,
     DocumentDetailView as MainDocumentDetailView,
-    DocumentCreateView as MainDocumentCreateView,
+    Document_mainCreateView as MainDocumentCreateView,
     DocumentUpdateView as MainDocumentUpdateView,
     DocumentDeleteView as MainDocumentDeleteView,
     update_references,

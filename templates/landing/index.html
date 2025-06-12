@@ -17,7 +17,7 @@
         overflow: hidden;
     }
     
-    .hero-section::before {
+    /* .hero-section::before {
         content: '';
         position: absolute;
         top: 0;
@@ -26,7 +26,7 @@
         height: 100%;
         background: url('{% static "img/pattern.png" %}') repeat;
         opacity: 0.1;
-    }
+    } */
     
     .hero-badge {
         background: rgba(255, 255, 255, 0.2);
@@ -52,7 +52,7 @@
         border-radius: 1.5rem;
         overflow: hidden;
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-        opacity: 0;
+        background-color: white;
     }
     
     .card-document:hover {
@@ -315,10 +315,10 @@
 {% endblock %}
 
 {% block content %}
-<div class="hero-section text-center">
+<div class="hero-section">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-8">
+            <div class="col-lg-8 text-center mb-5">
                 <div class="hero-badge">Простое управление документами</div>
                 <h1 class="display-4 fw-bold mb-4">Добро пожаловать в ГОСТ Docs</h1>
                 <p class="lead opacity-75 mb-5" style="font-size: 1.25rem;">Создавайте, редактируйте и форматируйте ваши документы в соответствии со всеми требованиями и стандартами</p>
@@ -327,64 +327,65 @@
                 </a>
             </div>
         </div>
-    </div>
-</div>
-
-<div class="container cards-container">
-    <div class="row g-4 justify-content-center">
-        <div class="col-lg-8">
-            <div class="card card-document h-100 position-relative">
-                <div class="card-header text-start">
-                    <div class="document-icon main">
-                        <i class="bi bi-folder-fill"></i>
+        
+        <!-- Перенесенная cards-container -->
+        <div class="row g-4 justify-content-center mt-5">
+            <div class="col-lg-10">
+                <div class="card card-document h-100 position-relative" style="opacity: 1;">
+                    <div class="card-header text-start">
+                        <div class="document-icon main">
+                            <i class="bi bi-folder-fill"></i>
+                        </div>
+                        <h3 class="document-title">Управление документами</h3>
                     </div>
-                    <h3 class="document-title">Управление документами</h3>
-                </div>
-                <div class="card-body">
-                    <div class="document-description">
-                        <p>Создавайте и управляйте вашими документами любого типа: дипломные работы, курсовые проекты, научные отчеты, диссертации и многое другое. Наш сервис поможет вам соблюдать все требования к оформлению.</p>
-                    </div>
-                    
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="bi bi-check-circle-fill"></i>
+                    <div class="card-body">
+                        <div class="document-description">
+                            <p>Создавайте и управляйте вашими документами любого типа: дипломные работы, курсовые проекты, научные отчеты, диссертации и многое другое. Наш сервис поможет вам соблюдать все требования к оформлению.</p>
                         </div>
-                        <div class="feature-content">
-                            <h4>Удобное редактирование</h4>
-                            <p>Встроенный текстовый редактор с форматированием и стилями</p>
+                        
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h4>Удобное редактирование</h4>
+                                <p>Встроенный текстовый редактор с форматированием и стилями</p>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="bi bi-file-earmark-pdf"></i>
+                        
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h4>Экспорт в PDF и DOCX</h4>
+                                <p>Сохраняйте документы в популярных форматах с сохранением форматирования</p>
+                            </div>
                         </div>
-                        <div class="feature-content">
-                            <h4>Экспорт в PDF и DOCX</h4>
-                            <p>Сохраняйте документы в популярных форматах с сохранением форматирования</p>
+                        
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="bi bi-book"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h4>Автоматическая библиография</h4>
+                                <p>Управление источниками и автоматическое форматирование списка литературы</p>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="bi bi-book"></i>
+                        
+                        <div class="mt-4">
+                            <a href="{% url 'documents:main_list' %}" class="btn btn-document btn-main w-100">
+                                <i class="bi bi-arrow-right-circle me-2"></i>Перейти к документам
+                            </a>
                         </div>
-                        <div class="feature-content">
-                            <h4>Автоматическая библиография</h4>
-                            <p>Управление источниками и автоматическое форматирование списка литературы</p>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4">
-                        <a href="{% url 'documents:main_list' %}" class="btn btn-document btn-main w-100">
-                            <i class="bi bi-arrow-right-circle me-2"></i>Перейти к документам
-                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+</div>
+
+<div class="container">
     <div class="info-section">
         <div class="container">
             <h2 class="section-title">Почему выбирают ГОСТ Docs</h2>
@@ -493,17 +494,7 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Анимация появления карточек
-        const cards = document.querySelectorAll('.card-document');
-        setTimeout(() => {
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.style.opacity = '1';
-                }, index * 300);
-            });
-        }, 300);
-        
-        // Анимация появления секций при скролле
+        // Анимация секций при скролле
         const animateOnScroll = function() {
             const sections = document.querySelectorAll('.info-section, .testimonial-card, .cta-section');
             sections.forEach(section => {

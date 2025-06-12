@@ -5,7 +5,7 @@ from django.utils import timezone
 
 
 class Document_main(models.Model):
-    standart = models.CharField('Стандарт', max_length=255, null=True, blank=True,)
+    standart = models.CharField('Стандарт', max_length=5000, null=True, blank=True,)
     WORK_TYPES = [
         ('MAG_DIPLOMA', 'Магистерская диссертация'),
         ('DIPLOMA',    'Дипломная работа/проект'),
